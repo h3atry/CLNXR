@@ -38,6 +38,8 @@
 
 ## Gates externos para beta público / 1.0
 
+O repositório público e o pré-release técnico já existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
+
 - [ ] Nome, marca, domínio e identificadores públicos verificados juridicamente.
 - [ ] Certificado de assinatura de código e chave de assinatura sob controle apropriado.
 - [ ] Máquina virtual limpa e matriz de Windows suportada.

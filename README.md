@@ -8,6 +8,8 @@ O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento
 
 O nome `CLNXR` é provisório. Marca, domínio, identificadores públicos e assinatura de código permanecem fora do escopo local até validação própria.
 
+Repositório público e pré-release técnico: [github.com/h3atry/CLNXR](https://github.com/h3atry/CLNXR). O release é experimental e não substitui assinatura, VM limpa ou auditoria.
+
 ## Proteções atuais
 
 - A análise é somente leitura.

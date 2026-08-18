@@ -11,7 +11,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | Não seguir reparse point | Implementado e testado | `PathSafetyPolicy.cs`; fixtures de junction real, troca TOCTOU e symlink de diretório real em `Clnxr.Safety.Tests`. | Faltam combinações de hard link/ACL/concorrência de outros processos. |
 | Não matar processo nem elevar automaticamente | Implementado | `CleanupExecutor.cs`, inspetor de processos, UI de skips. | Faltam testes com processos reais de terceiros. |
 | Evidência/recibo de ação | Implementado localmente | `ReceiptStore.cs`, hash SHA-256, testes de recibo normal e de ferramenta, histórico, visualizador estruturado somente leitura e exportação explícita de JSON na UI. | Falta esquema formal de migração. |
-| Nome/marca e publicação | Não iniciado por dependência externa | Nome ainda é provisório em `README.md`. | Exige decisão e validação jurídica/operacional. |
+| Nome/marca e publicação | Parcial — pré-release técnico | Nome ainda é provisório em `README.md`; repositório público `h3atry/CLNXR` e release pré-lançamento foram publicados após esta auditoria local. | Exige decisão e validação jurídica/operacional, assinatura e canal de release estável. |
 
 ## Fases do roadmap
 
@@ -23,7 +23,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | 3 — Limpador seguro P0 | Parcial forte | Perfis Seguro/Completo/Jogos/Desenvolvedor/Personalizado, revalidação, filtro de idade para dumps/WER, caches GPU Intel/AMD/NVIDIA, caches de navegador restritos a subpastas conhecidas, bytes removidos, nova análise, fixtures e recibos redigidos. | Integração em VM para ACL, arquivos abertos e caches reais; Delivery Optimization/Windows Update ainda só abre a ferramenta oficial. |
 | 4 — Resultados e histórico | Parcial forte | Grid de resultados, riscos, regras, recibos listados localmente, verificação SHA-256, visualização estruturada em modo leitura e exportação explícita de JSON. | Filtros/virtualização e validação visual/manual do fluxo. |
 | 5 — Ferramentas P1 | Parcial funcional | Perfis Jogos/Desenvolvedor em `REVIEW`; stores NuGet/npm/pnpm/Yarn/pip/uv e caches Gradle/Maven/Cargo; caches Discord/Teams/Epic/Spotify e caminho Electron delimitado; Lixeira isolada pela API oficial; launcher confirmado para o Storage Sense oficial; mapa de disco, arquivos grandes e duplicados em modo somente leitura com cancelamento e defesa contra reparse point. | Teste visual, desempenho em volumes grandes, esvaziamento em VM e cobertura maior de launchers/dev tools. |
-| 6 — Beta público | Não iniciado | Pacote ZIP local, checksum e SBOM de desenvolvimento. | Assinatura, repositório/canal público, política/termos revisados, updater, VM limpa e beta consentido. |
+| 6 — Beta público | Pré-release técnico, não beta | Pacote ZIP, checksum e SBOM de desenvolvimento publicados em `https://github.com/h3atry/CLNXR/releases`. | Assinatura, política/termos revisados, updater, VM limpa, auditoria e beta consentido. |
 | 7 — 1.0 | Não iniciado | Nenhuma evidência suficiente. | Todos os gates de beta, telemetria/relato opcional, suporte e auditoria externa. |
 | 8 — Futuro | Fora do P0/P1 | Nenhuma ação requerida agora. | Só priorizar após dados reais de beta. |
 
@@ -47,7 +47,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
-| Estado Git | 11 grupos de entradas pendentes | Há repositório local, mas ainda não existe baseline versionado/commitado para release. Os binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`) permanecem fora de qualquer commit até definir o escopo público. |
+| Estado Git | Limpo no commit `71b1545` | O baseline modular foi versionado e publicado; os binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`) permanecem ignorados fora do escopo público. |
 
 ## Decisão de término honesta
 
