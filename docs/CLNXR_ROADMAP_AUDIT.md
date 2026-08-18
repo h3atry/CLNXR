@@ -43,7 +43,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | Bundle portátil | Presente | Artefato local com DLLs modulares; não prova segurança ou prontidão pública. |
 | ZIP portátil | Presente | Pacote local gerado; não substitui instalação/teste em máquina limpa. |
 | SHA-256 do executável | `47CD4BEBC131FF4FA1CA325E22AB9DB639ADECC3D6A7BF5B7FAFC05AD0D97FE9` | Confere com `artifacts\SHA256SUMS.txt` e com o arquivo incorporado no ZIP desta rodada. |
-| SHA-256 do ZIP | `CF62E7230ED5EA8131A0C749DA24F9EA159CDC4157D6E1515F12F69467A4F2BC` | ZIP final desta rodada; contém 16 entradas somente sob `CLNXR-Portable/` e foi inspecionado sem abrir a UI. |
+| SHA-256 do ZIP | `E28F701375D4B5BD99C4EBEBF9EE97B366034AA6DCD6C41965DA73569458AA40` | ZIP `v0.1.0-dev.1` final desta rodada; contém 16 entradas somente sob `CLNXR-Portable/` e foi inspecionado sem abrir a UI. |
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
