@@ -1,0 +1,16 @@
+# Saídas locais de compilação, testes e renderização.
+artifacts/
+tmp/
+**/bin/
+**/obj/
+
+# Arquivos de usuário e ferramentas.
+*.user
+*.suo
+*.pdb
+*.log
+
+# Protótipo monolítico anterior mantido apenas localmente; a versão modular
+# publicada parte de CLNXR.sln e src/Clnxr.*.
+/CLNXR.exe
+/Program.cs

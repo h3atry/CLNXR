@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration><Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{180580B5-9F8E-4BF1-B29F-01120A21E005}</ProjectGuid><OutputType>Library</OutputType><RootNamespace>Clnxr.Platform.Windows</RootNamespace><AssemblyName>Clnxr.Platform.Windows</AssemblyName><TargetFrameworkVersion>v4.0</TargetFrameworkVersion><FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' "><DebugSymbols>true</DebugSymbols><DebugType>full</DebugType><Optimize>false</Optimize><OutputPath>bin\Debug\</OutputPath><DefineConstants>DEBUG;TRACE</DefineConstants></PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' "><DebugType>pdbonly</DebugType><Optimize>true</Optimize><OutputPath>bin\Release\</OutputPath><DefineConstants>TRACE</DefineConstants></PropertyGroup>
+  <ItemGroup><Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Web.Extensions" /></ItemGroup>
+  <ItemGroup><Compile Include="RecycleBinService.cs" /><Compile Include="RulePack.cs" /><Compile Include="StorageAnalysisService.cs" /><Compile Include="StorageSenseLauncher.cs" /><Compile Include="WindowsCandidateScanner.cs" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="rules\windows.v1.json"><LogicalName>Clnxr.Platform.Windows.rules.windows.v1.json</LogicalName></EmbeddedResource></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Clnxr.Core\Clnxr.Core.csproj"><Project>{180580B5-9F8E-4BF1-B29F-01120A21E001}</Project><Name>Clnxr.Core</Name></ProjectReference>
+    <ProjectReference Include="..\Clnxr.Safety\Clnxr.Safety.csproj"><Project>{180580B5-9F8E-4BF1-B29F-01120A21E002}</Project><Name>Clnxr.Safety</Name></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
