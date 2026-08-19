@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-dev.4 — 2026-08-18
+
+- Adiciona inventário de resíduos de desinstalação baseado somente em `InstallLocation` declarado; não remove Registro nem executa desinstaladores.
+- Adiciona desabilitação reversível de entradas `HKCU` Run/RunOnce, com confirmação, revalidação contra TOCTOU e backup local para restaurar; `HKLM`, pastas e comandos não são alterados.
+- Adiciona agendamento opt-in do perfil Seguro às 03:00 via `schtasks.exe`, com argumentos fixos, sem elevação automática, recibo local e remoção explícita.
+- Integra essas ações à página Ferramentas e amplia o sandbox para 15 grupos; todos os quatro smokes foram executados após o rebuild Release.
+
 ## 0.1.0-dev.3 — 2026-08-18
 
 - Adiciona Explorador de inicialização somente leitura para Run/RunOnce e pastas de Inicialização.

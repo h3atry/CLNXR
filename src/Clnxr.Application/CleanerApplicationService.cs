@@ -50,6 +50,8 @@ namespace Clnxr.Application
         private readonly CustomRuleStore customRuleStore;
         private readonly StartupExplorerService startupExplorerService;
         private readonly LockedFileInspectorService lockedFileInspectorService;
+        private readonly UninstallResidualService uninstallResidualService;
+        private readonly ScheduledCleanupService scheduledCleanupService;
 
         public CleanerApplicationService()
             : this(new PathSafetyPolicy(), new WindowsProcessInspector(), ReceiptStore.CreateDefault(), new RecycleBinService(), new StorageSenseLauncher(), new StorageAnalysisService())
@@ -90,6 +92,8 @@ namespace Clnxr.Application
             this.customRuleStore = customRuleStore;
             startupExplorerService = new StartupExplorerService();
             lockedFileInspectorService = new LockedFileInspectorService();
+            uninstallResidualService = new UninstallResidualService();
+            scheduledCleanupService = new ScheduledCleanupService();
         }
 
         public ScanSession Analyze(ScanProfile profile, CancellationToken cancellationToken, Action<string> progress)
@@ -216,6 +220,49 @@ namespace Clnxr.Application
         public LockedFileInspection InspectLockedFile(string path)
         {
             return lockedFileInspectorService.Inspect(path);
+        }
+
+        public StartupMutationResult DisableStartupEntry(StartupEntry entry)
+        {
+            return startupExplorerService.Disable(entry);
+        }
+
+        public IList<DisabledStartupEntry> ListDisabledStartupEntries()
+        {
+            return startupExplorerService.ListDisabledEntries();
+        }
+
+        public StartupMutationResult RestoreStartupEntry(DisabledStartupEntry entry)
+        {
+            return startupExplorerService.Restore(entry);
+        }
+
+        public UninstallResidualResult ListUninstallResiduals()
+        {
+            return uninstallResidualService.ListEntries();
+        }
+
+        public ToolExecution ScheduleSafeDailyCleanup(string executablePath)
+        {
+            ScheduledCleanupPlan plan = scheduledCleanupService.BuildSafeDailyPlan(executablePath);
+            ScheduledCleanupResult result = scheduledCleanupService.Create(plan);
+            MaintenanceReceipt receipt = new MaintenanceReceipt("scheduled-safe-cleanup-v1", 0, 0);
+            receipt.CompletedUtc = DateTime.UtcNow;
+            receipt.Status = result.Succeeded ? ToolActionStatus.Succeeded : ToolActionStatus.Failed;
+            receipt.Message = result.Message;
+            string receiptPath = receiptStore.SaveMaintenance(receipt);
+            return new ToolExecution(result.Succeeded, result.Message, receipt, receiptPath);
+        }
+
+        public ToolExecution RemoveScheduledSafeCleanup()
+        {
+            ScheduledCleanupResult result = scheduledCleanupService.Remove();
+            MaintenanceReceipt receipt = new MaintenanceReceipt("scheduled-safe-cleanup-remove-v1", 0, 0);
+            receipt.CompletedUtc = DateTime.UtcNow;
+            receipt.Status = result.Succeeded ? ToolActionStatus.Succeeded : ToolActionStatus.Failed;
+            receipt.Message = result.Message;
+            string receiptPath = receiptStore.SaveMaintenance(receipt);
+            return new ToolExecution(result.Succeeded, result.Message, receipt, receiptPath);
         }
     }
 }

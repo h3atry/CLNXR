@@ -34,7 +34,7 @@ namespace Clnxr.Safety.Tests
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 13 grupos de testes de seguranca, evidencia, catalogo declarativo, regras personalizadas e ferramentas somente leitura foram concluidos.");
+                Console.WriteLine("PASS: 15 grupos de testes de seguranca, evidencia, catalogo declarativo, regras personalizadas e ferramentas somente leitura foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -389,6 +389,29 @@ namespace Clnxr.Safety.Tests
                 "Inspetor de arquivos bloqueados precisa normalizar o caminho informado.");
             Expect(new FileInfo(path).Length == before,
                 "Ferramentas P2 somente leitura não podem alterar o arquivo inspecionado.");
+
+            UninstallResidualResult residuals = new UninstallResidualService().ListEntries();
+            Expect(residuals != null && residuals.Entries != null && residuals.Issues != null,
+                "Inventário de resíduos precisa ler entradas conhecidas sem alterar o Registro.");
+
+            string executable = Path.Combine(root, "CLNXR-Portable.exe");
+            File.WriteAllBytes(executable, new byte[] { 0x4D, 0x5A });
+            ScheduledCleanupService scheduler = new ScheduledCleanupService();
+            ScheduledCleanupPlan plan = scheduler.BuildSafeDailyPlan(executable);
+            string createArguments = scheduler.BuildCreateArguments(plan);
+            string deleteArguments = scheduler.BuildDeleteArguments();
+            Expect(plan.TaskName == ScheduledCleanupService.TaskName && plan.Arguments.IndexOf("--profile safe", StringComparison.Ordinal) >= 0,
+                "Agendamento precisa ficar limitado ao perfil Seguro e ao nome fixo da tarefa.");
+            Expect(createArguments.IndexOf("--clean --yes --quiet", StringComparison.Ordinal) >= 0 &&
+                deleteArguments.IndexOf(ScheduledCleanupService.TaskName, StringComparison.Ordinal) >= 0,
+                "Agendamento precisa produzir comandos explícitos de criação e desfazer sem shell arbitrário.");
+            Expect(File.Exists(executable), "A construção do plano de agendamento não pode remover o executável.");
+
+            StartupExplorerService startupService = new StartupExplorerService();
+            IList<DisabledStartupEntry> disabled = startupService.ListDisabledEntries();
+            Expect(disabled != null, "A lista de backups reversíveis de inicialização precisa ser somente leitura.");
+            StartupMutationResult denied = startupService.Disable(new StartupEntry("Teste", "Entrada", "comando", "fixture"));
+            Expect(!denied.Succeeded, "Uma entrada sem origem de Registro suportada não pode ser desabilitada.");
         }
 
         private static void TestStorageAnalysisMidTreeCancellation(string fixtureRoot)
