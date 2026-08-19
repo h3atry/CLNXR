@@ -4,7 +4,7 @@ Este roteiro é uma validação manual do build portátil. Não execute limpeza 
 
 ## Pré-condições
 
-- Extrair `artifacts\CLNXR-Portable-0.1.0-dev.6.zip`, abrir `CLNXR-Portable\CLNXR-Portable.exe` e conferir os hashes em `CLNXR-Portable\SHA256SUMS.txt`. O mesmo diretório contém `CLNXR.Cli.exe` para dry-run/JSON.
+- Extrair `artifacts\CLNXR-Portable-0.1.0-dev.7.zip`, abrir `CLNXR-Portable\CLNXR-Portable.exe` e conferir os hashes em `CLNXR-Portable\SHA256SUMS.txt`. O mesmo diretório contém `CLNXR.Cli.exe` para dry-run/JSON.
 - Registrar versão do Windows, resolução, escala do sistema e se o usuário tem alto contraste/movimento reduzido ativo.
 - Não estar em sessão de jogo ou outra atividade que não possa ser interrompida.
 - Não selecionar nem confirmar remoção de achados reais nesta validação.
@@ -23,6 +23,7 @@ Este roteiro é uma validação manual do build portátil. Não execute limpeza 
 | Flush DNS | Em uma sessão em que a rede possa ser interrompida brevemente, acionar Limpar DNS e cancelar uma vez; depois confirmar em uma sessão controlada. | Cancelar não executa comando; confirmar usa somente `/flushdns`, mostra o resultado real e grava recibo local. |
 | Reparos do sistema | Em VM ou máquina de teste, acionar SFC verificar, DISM CheckHealth e CHKDSK /scan individualmente. | Cada tela pede confirmação, informa possível elevação/tempo, não usa switches de reparo e exibe saída/recibo; não inferir que “concluído” significa que o sistema foi corrigido. |
 | Histórico vazio | Abrir Histórico sem selecionar arquivo externo. | A página informa que não há recibos, não envia dados e deixa ações dependentes de seleção desativadas. |
+| Remoção de dados próprios | Em uma conta de teste, abrir Configurações, conferir a prévia e cancelar; em seguida confirmar apenas em uma instalação descartável. | A prévia mostra arquivos/bytes, a confirmação delimita `%LocalAppData%\\CLNXR`, a raiz permanece e documentos, Downloads e navegadores não são tocados. |
 | Histórico com recibo | Após uma futura limpeza controlada em fixture/VM, abrir Histórico, selecionar um recibo e usar Ver recibo. | A tabela mostra campos e resultados; o estado de integridade SHA-256 fica visível; não há edição do JSON. |
 | Recibo inválido | Em uma fixture, duplicar um recibo e alterar uma letra sem atualizar o hash. | Histórico indica falha de integridade; o visualizador ainda pode informar o conteúdo local, mas não declara o recibo íntegro. |
 | Cancelamento visual | Somente em fixture/VM, iniciar análise e cancelar. | O botão Cancelar responde, o estado final informa cancelamento e nenhuma limpeza é iniciada pela análise. |

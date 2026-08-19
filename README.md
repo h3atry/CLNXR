@@ -4,7 +4,7 @@ Limpador de cache local para Windows, com análise antes de qualquer limpeza, se
 
 ## Estado desta entrega
 
-O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento local; o ZIP correspondente desta revisão está em `artifacts\CLNXR-Portable-0.1.0-dev.6.zip`. Ele foi compilado e o núcleo passou pelos testes de sandbox incluídos no projeto. Não foi validado visualmente nesta máquina, em máquina virtual limpa, com assinatura de código ou por beta público; portanto, não deve ser apresentado como release público ou como prova de compatibilidade universal.
+O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento local; o ZIP correspondente desta revisão está em `artifacts\CLNXR-Portable-0.1.0-dev.7.zip`. Ele foi compilado e o núcleo passou pelos testes de sandbox incluídos no projeto. Não foi validado visualmente nesta máquina, em máquina virtual limpa, com assinatura de código ou por beta público; portanto, não deve ser apresentado como release público ou como prova de compatibilidade universal.
 
 O nome `CLNXR` é provisório. Marca, domínio, identificadores públicos e assinatura de código permanecem fora do escopo local até validação própria.
 
@@ -18,6 +18,7 @@ Repositório público e pré-release técnico: [github.com/h3atry/CLNXR](https:/
 - Junctions, symlinks e demais reparse points são bloqueados durante análise e antes de remover itens.
 - O aplicativo não mata processos nem se eleva automaticamente; arquivos em uso ou sem acesso são pulados.
 - Um recibo JSON local com hash é salvo após cada limpeza, pode ser verificado e lido em visualizador estruturado somente leitura.
+- A página Configurações oferece remoção explícita dos dados próprios do CLNXR. A prévia mede antes de confirmar e a execução só percorre `%LocalAppData%\\CLNXR`; a raiz é preservada, reparse points são ignorados e arquivos externos, documentos, Downloads e dados de navegador não entram nessa ação.
 
 ## Limites atuais
 
@@ -29,6 +30,7 @@ Repositório público e pré-release técnico: [github.com/h3atry/CLNXR](https:/
 - A página Ferramentas também oferece o Explorador de inicialização, o Inspetor de arquivos bloqueados, o inventário de resíduos e o agendamento Seguro. O explorador enumera Run/RunOnce e pastas de Inicialização; após confirmação, somente valores `HKCU` podem ser desabilitados com backup local reversível e restauração explícita. `HKLM`, pastas e comandos não são alterados. O inspetor consulta o Restart Manager sem encerrar processos. Resíduos são apenas candidatos baseados em `InstallLocation` declarado; nenhum desinstalador ou chave é executado/removido. O agendamento usa apenas o perfil Seguro, horário fixo e `schtasks.exe` sem elevação automática, e pode ser removido pelo próprio botão.
 - A página Ferramentas também oferece diagnóstico de rede e verificações do sistema. Rede usa `ipconfig.exe /all` em modo somente leitura e `ipconfig.exe /flushdns` somente após confirmação; Winsock/TCP-IP são exibidos como planos manuais, sem execução silenciosa, pois exigem elevação e reinicialização. O System Repair Hub executa, sob confirmação, apenas `sfc /verifyonly`, `DISM /Online /Cleanup-Image /CheckHealth` e `chkdsk X: /scan`; não há correção automática por `/scannow`, `/RestoreHealth` ou `/f`.
 - A grade de Resultados usa virtualização de linhas: filtros e seleção continuam explícitos, mas a UI não cria um controle por arquivo encontrado. Configurações persistem somente preferências locais não sensíveis; o modo de movimento reduzido respeita a configuração do Windows como padrão e pode ser ajustado manualmente.
+- A remoção de dados locais do CLNXR é deliberadamente separada da limpeza de cache: não aceita caminho escolhido pelo usuário, não grava recibo dentro da raiz que acabou de apagar e não remove a própria pasta `CLNXR`.
 - Não há atualizador, assinatura de código, SBOM de release assinado, instalador ou telemetria.
 - A persistência de regras personalizadas é local ao usuário e não acompanha automaticamente o ZIP portátil; importar/exportar regras e assinatura/marketplace continuam fora desta prévia.
 

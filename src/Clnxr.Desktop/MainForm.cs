@@ -176,6 +176,7 @@ namespace Clnxr.Desktop
         private readonly CheckBox reducedMotionCheckBox;
         private readonly Button saveSettingsButton;
         private readonly Button resetSettingsButton;
+        private readonly Button removeUserDataButton;
         private readonly Label protectedDataLabel;
         private readonly DataGridView grid;
         private readonly Label pageTitle;
@@ -405,6 +406,10 @@ namespace Clnxr.Desktop
             resetSettingsButton.Visible = false;
             resetSettingsButton.Click += delegate { ResetSettings(); };
 
+            removeUserDataButton = CreateActionButton("Remover dados do CLNXR", Review, new Point(390, 82));
+            removeUserDataButton.Visible = false;
+            removeUserDataButton.Click += async delegate { await RemoveUserDataAsync(); };
+
             protectedDataLabel = new Label();
             protectedDataLabel.Text = "Proteção fixa: navegadores, logins, cookies, Downloads, saves e arquivos pessoais ficam fora do catálogo.";
             protectedDataLabel.AutoSize = true;
@@ -442,6 +447,7 @@ namespace Clnxr.Desktop
             controls.Controls.Add(reducedMotionCheckBox);
             controls.Controls.Add(saveSettingsButton);
             controls.Controls.Add(resetSettingsButton);
+            controls.Controls.Add(removeUserDataButton);
             controls.Controls.Add(protectedDataLabel);
 
             resultsFilterPanel = new Panel();
@@ -712,6 +718,7 @@ namespace Clnxr.Desktop
             reducedMotionCheckBox.Visible = settingsToolbar;
             saveSettingsButton.Visible = settingsToolbar;
             resetSettingsButton.Visible = settingsToolbar;
+            removeUserDataButton.Visible = settingsToolbar;
             protectedDataLabel.Visible = !settingsToolbar;
             foreach (KeyValuePair<DesktopPage, Button> pair in navigation)
             {
@@ -1041,6 +1048,7 @@ namespace Clnxr.Desktop
                 new SettingRow { Setting = "Movimento reduzido", Value = preferences.ReducedMotion ? "Ativado" : "Desativado", Detail = "A preferência é local; sem transformações ou loops quando ativada." },
                 new SettingRow { Setting = "Resultados", Value = "Grade virtualizada", Detail = "A página de resultados cria apenas as linhas visíveis, sem um widget por arquivo." },
                 new SettingRow { Setting = "Atualizações", Value = preferences.UpdatesOptIn ? "Opt-in manual" : "Desativadas", Detail = "Nenhum download automático ou telemetria está implementado." },
+                new SettingRow { Setting = "Dados locais", Value = "Remoção explícita disponível", Detail = "Remove somente arquivos próprios do CLNXR em LocalAppData\\CLNXR; documentos, navegadores e downloads ficam fora." },
                 new SettingRow { Setting = "Privilégios", Value = "Sem elevação automática", Detail = "Itens sem acesso são pulados e registrados." }
             });
             reducedMotionCheckBox.Checked = preferences.ReducedMotion;
@@ -1073,6 +1081,69 @@ namespace Clnxr.Desktop
             reducedMotionCheckBox.Checked = preferences.ReducedMotion;
             statusLabel.ForeColor = Review;
             statusLabel.Text = "Padrão do Windows carregado na tela; clique em Salvar configurações para persistir.";
+        }
+
+        private async Task RemoveUserDataAsync()
+        {
+            if (activeOperation != null) return;
+
+            UserDataCleanupPreview preview;
+            try
+            {
+                SetBusy(true, "Verificando somente os dados próprios do CLNXR...", false);
+                preview = await Task.Run(delegate { return application.PreviewUserDataCleanup(CancellationToken.None); });
+            }
+            catch (Exception ex)
+            {
+                SetBusy(false, null);
+                MessageBox.Show(this, "Não foi possível analisar os dados locais do CLNXR: " + ex.Message, "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            SetBusy(false, null);
+            if (preview.FileCount == 0 && preview.Issues.Count == 0)
+            {
+                statusLabel.ForeColor = Cyan;
+                statusLabel.Text = "Nenhum dado próprio do CLNXR foi encontrado para remover.";
+                return;
+            }
+
+            string warning = string.Format(
+                "Remover permanentemente {0:N0} arquivo(s) próprios do CLNXR ({1})?\r\n\r\n" +
+                "A ação fica limitada à pasta local do CLNXR e não toca documentos, Downloads, navegadores, logins, cookies ou arquivos pessoais.\r\n" +
+                "Configurações, recibos e regras locais serão apagados. Essa ação não pode ser desfeita.",
+                preview.FileCount, SizeText(preview.Bytes));
+            if (preview.Issues.Count > 0)
+                warning += "\r\n\r\nAvisos de leitura: " + preview.Issues.Count + ". Itens com aviso serão preservados.";
+
+            if (MessageBox.Show(this, warning, "Remover dados locais do CLNXR", MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.ForeColor = Review;
+                statusLabel.Text = "Remoção de dados locais cancelada pelo usuário.";
+                return;
+            }
+
+            SetBusy(true, "Removendo dados próprios do CLNXR; a raiz será preservada...", false);
+            try
+            {
+                UserDataCleanupResult result = await Task.Run(delegate { return application.CleanupUserData(CancellationToken.None); });
+                SetBusy(false, null);
+                statusLabel.ForeColor = result.Issues.Count == 0 ? Success : Review;
+                statusLabel.Text = string.Format("Dados locais: {0:N0} arquivo(s) removido(s), {1} liberados, {2:N0} preservado(s).",
+                    result.RemovedFiles, SizeText(result.RemovedBytes), result.SkippedFiles);
+                ShowSettings();
+                statusLabel.ForeColor = result.Issues.Count == 0 ? Success : Review;
+                statusLabel.Text = string.Format("Concluído: {0:N0} arquivo(s) próprio(s) removido(s); {1} liberados. {2}",
+                    result.RemovedFiles, SizeText(result.RemovedBytes), result.Issues.Count == 0 ? "Nenhum aviso." : result.Issues.Count + " aviso(s); itens preservados.");
+            }
+            catch (Exception ex)
+            {
+                SetBusy(false, null);
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Remoção não concluída.";
+                MessageBox.Show(this, "A remoção não foi concluída: " + ex.Message, "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private async Task QueryRecycleBinAsync()
@@ -2523,6 +2594,7 @@ namespace Clnxr.Desktop
             reducedMotionCheckBox.Enabled = !busy;
             saveSettingsButton.Enabled = !busy;
             resetSettingsButton.Enabled = !busy;
+            removeUserDataButton.Enabled = !busy;
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
             if (!string.IsNullOrEmpty(message))
             {

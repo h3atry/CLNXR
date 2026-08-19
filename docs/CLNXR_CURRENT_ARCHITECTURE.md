@@ -17,6 +17,7 @@ Esta auditoria descreve o estado verificável em 18 de agosto de 2026 em `D:\Pro
 | `WindowsCandidateScanner` | Descobre perfis/discos e cria candidatos conhecidos | Usa regras versionadas do pacote declarativo; assinatura e atualização do pacote ainda não existem. |
 | `FileMeasurement` | Percorre diretórios e mede arquivos | Produz contagens e avisos estruturados, mas ainda não há benchmark de volume grande. |
 | `CleanupExecutor` | Revalida política, processo, reparse point e remove somente alvos elegíveis | Não substitui testes de ACL/concorrência em VM e não encerra processos por design. |
+| `UserDataCleanupService` | Mede e remove apenas dados próprios em uma raiz dedicada `%LocalAppData%\\CLNXR`, preservando a raiz e reparse points | Não aceita caminhos arbitrários; a ação exige prévia/confirmação da UI e ainda precisa de teste visual/VM. |
 | `ScanSession` / `CleanupReceipt` | Resultado de análise, ação, contagens, bytes, saltos e hash persistido | Migração formal de versões de recibo e assinatura do recibo ainda não existem. |
 | `WindowsRulePack` | Carrega JSON embutido, valida schema, versão, IDs, perfis e riscos | O pacote é versionado, mas não assinado nem atualizável de forma autenticada. |
 | `StartupExplorerService` | Enumera HKCU/HKLM Run/RunOnce e pastas; permite apenas mutação HKCU com revalidação e backup reversível | Não executa comandos, não toca HKLM/pastas e não eleva automaticamente; restauração real ainda requer teste manual controlado. |

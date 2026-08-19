@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-dev.7 — 2026-08-19
+
+- Adiciona remoção explícita dos dados próprios do CLNXR em `%LocalAppData%\\CLNXR`, limitada a recibos, regras e configurações do aplicativo; a raiz é preservada para reinstalação e nenhum caminho arbitrário é aceito.
+- A interface de Configurações mostra a prévia de arquivos/bytes, pede confirmação e informa removidos, preservados e avisos; cancelamento e reparse points preservam os dados.
+- O sandbox passa a cobrir medição, remoção delimitada, proteção de arquivo externo, raiz preservada, rejeição de raiz arbitrária e cancelamento.
+- Mantém a entrega como pré-release técnico; validação visual, benchmark de 60 FPS, ACL, VM limpa, assinatura, SmartScreen e beta externo continuam pendentes.
+
 ## 0.1.0-dev.6 — 2026-08-19
 
 - Resultados passam a usar `DataGridView.VirtualMode`, mantendo filtros e seleção explícita sem criar um widget por achado.
