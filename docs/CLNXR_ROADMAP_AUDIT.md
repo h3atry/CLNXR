@@ -1,6 +1,6 @@
 # CLNXR — Auditoria de execução do roadmap
 
-Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de estado, não uma promessa de release.
+Data da auditoria: 19 de agosto de 2026. Esta tabela é uma verificação de estado, não uma promessa de release.
 
 ## Requisitos transversais
 
@@ -30,11 +30,11 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 
 ## Evidência de validação local disponível
 
-- `Clnxr.Safety.Tests`: dezessete grupos executados em sandbox temporário; inclui destino protegido, limpeza pelo serviço de aplicação, recibos com redação de caminho, cancelamento antes e durante análise P1, arquivo bloqueado, catálogo P0/P1, validação do pacote declarativo e perfil Personalizado, regras personalizadas com prévia/limpeza explícita e persistência local, caches de navegador protegidos, filtro de idade, ferramentas P1 somente leitura, P2 reversível, contratos fechados de Network Utilities/System Repair, preferências locais sanitizadas, junction, TOCTOU e symlink de diretório.
+- `Clnxr.Safety.Tests`: dezoito grupos executados em sandbox temporário; inclui destino protegido, limpeza pelo serviço de aplicação, recibos com redação de caminho, cancelamento antes e durante análise P1, arquivo bloqueado, catálogo P0/P1, validação do pacote declarativo e perfil Personalizado, regras personalizadas com prévia/limpeza explícita e persistência local, caches de navegador protegidos, filtro de idade, ferramentas P1 somente leitura, P2 reversível, contratos fechados de Network Utilities/System Repair, preferências locais sanitizadas, remoção delimitada dos dados próprios do CLNXR, junction, TOCTOU e symlink de diretório.
 - `Clnxr.WindowsScan.Smoke`: scan Seguro real em modo leitura e consulta global da Lixeira pela API do Windows, sem alteração de dados.
 - `Clnxr.Desktop.Smoke`: construção e descarte não visual da janela desktop em STA e verificação de `DataGridView.VirtualMode` na página Resultados, sem análise ou limpeza.
 - `CLNXR.sln`: build Release dos doze projetos pelo MSBuild clássico e execução dos quatro binários de teste contra os assemblies físicos; o CLI também foi exercitado com dry-run e JSON.
-- `artifacts\CLNXR-Portable\`: bundle da revisão atual; o ZIP `artifacts\CLNXR-Portable-0.1.0-dev.6.zip` será a referência depois do rebuild e da conferência desta rodada.
+- `artifacts\CLNXR-Portable\`: bundle da revisão atual; o ZIP `artifacts\CLNXR-Portable-0.1.0-dev.7.zip` será a referência depois do rebuild e da conferência desta rodada.
 - O pacote da revisão atual deve ser validado quanto aos arquivos obrigatórios, hashes internos e dry-run do CLI extraído antes da publicação; os hashes de dev.3 permanecem apenas como histórico.
 
 ## Auditoria de artefatos — 19/08/2026
@@ -43,12 +43,12 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | --- | --- | --- |
 | Bundle portátil | Presente | Artefato local com DLLs modulares; não prova segurança ou prontidão pública. |
 | ZIP portátil | Presente | Pacote local gerado; não substitui instalação/teste em máquina limpa. |
-| SHA-256 do executável | `AAA37C5E46D81DA762065374B57784E1873CF8DACAA04DF1F9B62200D4C73F42` | Confere com o executável gráfico de `v0.1.0-dev.6`; não é assinatura Authenticode. |
-| SHA-256 do ZIP | `A137FA7E0E3A72995835741BAFCF4D85C4F9BD14EA8F2B4DC7381AA0289B493C` | ZIP `v0.1.0-dev.6` com 16 entradas; 15 hashes internos conferidos, CLI extraído em dry-run e contrato de grade virtualizada exercitado no smoke desktop. |
+| SHA-256 do executável | `21D79C5475F47906C2D9DD61621026521CD5665D585ED1CC29D7DCA9DDBCBD01` | Confere com o executável gráfico de `v0.1.0-dev.7`; não é assinatura Authenticode. |
+| SHA-256 do ZIP | `7018B2D44E881C11BEC79049960299078ADC38F3FA30070183345AFFC8076156` | ZIP `v0.1.0-dev.7` com 16 entradas; 15 hashes internos conferidos, CLI extraído em dry-run e contrato de grade virtualizada exercitado no smoke desktop. |
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
-| Estado Git | `v0.1.0-dev.6` publicado em `master`/`main` e release prévia do GitHub | Commit remoto verificado: `1d257e82b5d2dd5337da9f85cdc8ad5c8b3fd842`; release `https://github.com/h3atry/CLNXR/releases/tag/v0.1.0-dev.6` com ZIP `sha256:a137fa7e0e3a72995835741bafcf4d85c4f9bd14ea8f2b4dc7381aa0289b493c` e checksums `sha256:1249b39043f249f375ffaaaa3ad9c1a02f2773ab8886a709e77fa9397f6e14ac`. O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
+| Estado Git | `v0.1.0-dev.7` em preparação para publicação | O commit, release e assets remotos serão registrados após a publicação e verificação da API. O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
 
 ## Decisão de término honesta
 

@@ -12,6 +12,7 @@
 - [x] Build local do executável de desenvolvimento.
 - [x] Grade de resultados virtualizada, com seleção/filtros preservados e smoke não visual do contrato.
 - [x] Preferência local de movimento reduzido sanitizada e persistida sem telemetria.
+- [x] Remoção explícita dos dados próprios do CLNXR com prévia, confirmação, raiz dedicada preservada, cancelamento e proteção de reparse points.
 - [x] Pacote ZIP local com executável, política de privacidade, versão, SBOM de desenvolvimento e checksum do executável.
 - [ ] Teste visual interativo do build novo.
 - [x] Testes com junction NTFS real, alvo trocado por junction (TOCTOU), symlink separado, arquivo real em uso e cancelamento antes da ação.
@@ -47,7 +48,7 @@
 
 ## Gates externos para beta público / 1.0
 
-O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.6` existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
+O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.6`/`v0.1.0-dev.7` existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
 
 - [ ] Nome, marca, domínio e identificadores públicos verificados juridicamente.
 - [ ] Certificado de assinatura de código e chave de assinatura sob controle apropriado.

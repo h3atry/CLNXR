@@ -61,6 +61,7 @@ namespace Clnxr.Application
         private readonly ScheduledCleanupService scheduledCleanupService;
         private readonly NetworkUtilitiesService networkUtilitiesService;
         private readonly SystemRepairService systemRepairService;
+        private readonly UserDataCleanupService userDataCleanupService;
 
         public CleanerApplicationService()
             : this(new PathSafetyPolicy(), new WindowsProcessInspector(), ReceiptStore.CreateDefault(), new RecycleBinService(), new StorageSenseLauncher(), new StorageAnalysisService())
@@ -105,6 +106,7 @@ namespace Clnxr.Application
             scheduledCleanupService = new ScheduledCleanupService();
             networkUtilitiesService = new NetworkUtilitiesService();
             systemRepairService = new SystemRepairService();
+            userDataCleanupService = new UserDataCleanupService();
         }
 
         public ScanSession Analyze(ScanProfile profile, CancellationToken cancellationToken, Action<string> progress)
@@ -301,6 +303,16 @@ namespace Clnxr.Application
         public IList<SystemRepairPlan> ListSystemRepairPlans()
         {
             return systemRepairService.ListPlans();
+        }
+
+        public UserDataCleanupPreview PreviewUserDataCleanup(CancellationToken cancellationToken)
+        {
+            return userDataCleanupService.Preview(cancellationToken);
+        }
+
+        public UserDataCleanupResult CleanupUserData(CancellationToken cancellationToken)
+        {
+            return userDataCleanupService.Execute(cancellationToken);
         }
 
         public ToolExecution ExecuteSystemRepair(string actionId, string volume)

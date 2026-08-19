@@ -33,10 +33,11 @@ namespace Clnxr.Safety.Tests
                 TestP2ReadOnlyTools(fixtureRoot);
                 TestP3NetworkAndRepairContracts();
                 TestLocalPreferences(fixtureRoot);
+                TestUserDataCleanup(fixtureRoot);
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 17 grupos de testes de seguranca, evidencia, catalogo declarativo, ferramentas locais, contratos P3 e preferencias foram concluidos.");
+                Console.WriteLine("PASS: 18 grupos de testes de seguranca, evidencia, catalogo declarativo, ferramentas locais, contratos P3, preferencias e remocao de dados proprios foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -479,6 +480,39 @@ namespace Clnxr.Safety.Tests
             UserPreferences invalid = service.CreateDefaults();
             invalid.Theme = "dark/unsafe";
             Expect(!service.Save(invalid, out message), "Preferencias com token de tema fora do formato precisam ser rejeitadas.");
+        }
+
+        private static void TestUserDataCleanup(string fixtureRoot)
+        {
+            string root = Path.Combine(fixtureRoot, "CLNXR");
+            string receipts = Path.Combine(root, "Receipts");
+            string rules = Path.Combine(root, "Rules");
+            string outside = Path.Combine(fixtureRoot, "outside-user-data.txt");
+            Directory.CreateDirectory(receipts);
+            Directory.CreateDirectory(rules);
+            File.WriteAllBytes(Path.Combine(receipts, "receipt.json"), new byte[] { 1, 2, 3 });
+            File.WriteAllBytes(Path.Combine(rules, "rules.json"), new byte[] { 4, 5 });
+            File.WriteAllText(outside, "must remain outside CLNXR root");
+
+            UserDataCleanupService service = new UserDataCleanupService(root);
+            UserDataCleanupPreview preview = service.Preview(CancellationToken.None);
+            Expect(preview.FileCount == 2 && preview.Bytes == 5, "Prévia de dados próprios precisa medir somente os arquivos da raiz CLNXR.");
+
+            UserDataCleanupResult result = service.Execute(CancellationToken.None);
+            Expect(!result.WasCancelled && result.RemovedFiles == 2 && result.RemovedBytes == 5,
+                "Execução de dados próprios precisa remover e contabilizar os arquivos previstos.");
+            Expect(Directory.Exists(root), "A raiz CLNXR precisa permanecer para permitir reinstalação ou nova configuração.");
+            Expect(File.Exists(outside), "Arquivo fora da raiz CLNXR precisa permanecer intacto.");
+
+            string preserved = Path.Combine(root, "preserved.bin");
+            File.WriteAllBytes(preserved, new byte[] { 9 });
+            UserDataCleanupResult cancelled = service.Execute(new CancellationToken(true));
+            Expect(cancelled.WasCancelled && File.Exists(preserved), "Cancelamento antes da execução precisa preservar os dados locais.");
+
+            bool rejected = false;
+            try { new UserDataCleanupService(Path.Combine(fixtureRoot, "arbitrary-root")); }
+            catch (ArgumentException) { rejected = true; }
+            Expect(rejected, "A remoção de dados próprios precisa rejeitar qualquer raiz que não seja uma pasta CLNXR dedicada.");
         }
 
         private static void TestStorageAnalysisMidTreeCancellation(string fixtureRoot)
