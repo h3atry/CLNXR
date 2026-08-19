@@ -99,6 +99,22 @@ namespace Clnxr.Desktop
         public string Detail { get; set; }
     }
 
+    internal sealed class StartupRow
+    {
+        public string Scope { get; set; }
+        public string Name { get; set; }
+        public string Source { get; set; }
+        public string Command { get; set; }
+    }
+
+    internal sealed class LockedProcessRow
+    {
+        public string ProcessId { get; set; }
+        public string ApplicationName { get; set; }
+        public string ServiceName { get; set; }
+        public string ApplicationType { get; set; }
+    }
+
     internal sealed class MainForm : Form
     {
         private static readonly Color Graphite = Color.FromArgb(22, 25, 31);
@@ -121,6 +137,8 @@ namespace Clnxr.Desktop
         private readonly Button diskMapButton;
         private readonly Button largeFilesButton;
         private readonly Button duplicatesButton;
+        private readonly Button startupButton;
+        private readonly Button lockedFileButton;
         private readonly Button viewReceiptButton;
         private readonly Button exportReceiptButton;
         private readonly Button customRuleButton;
@@ -194,7 +212,7 @@ namespace Clnxr.Desktop
 
             Panel controls = new Panel();
             controls.Dock = DockStyle.Top;
-            controls.Height = 110;
+            controls.Height = 150;
             controls.BackColor = PanelColor;
             controls.Padding = new Padding(16, 12, 16, 10);
             controls.Location = new Point(26, 98);
@@ -257,6 +275,14 @@ namespace Clnxr.Desktop
             duplicatesButton.Visible = false;
             duplicatesButton.Click += async delegate { await FindDuplicatesAsync(); };
 
+            startupButton = CreateActionButton("Inicialização", Cyan, new Point(18, 78));
+            startupButton.Visible = false;
+            startupButton.Click += async delegate { await ListStartupAsync(); };
+
+            lockedFileButton = CreateActionButton("Arquivo bloqueado", Review, new Point(166, 78));
+            lockedFileButton.Visible = false;
+            lockedFileButton.Click += async delegate { await InspectLockedFileAsync(); };
+
             viewReceiptButton = CreateActionButton("Ver recibo", Cyan, new Point(18, 40));
             viewReceiptButton.Visible = false;
             viewReceiptButton.Enabled = false;
@@ -280,7 +306,7 @@ namespace Clnxr.Desktop
             protectedData.Text = "Proteção fixa: navegadores, logins, cookies, Downloads, saves e arquivos pessoais ficam fora do catálogo.";
             protectedData.AutoSize = true;
             protectedData.ForeColor = TextMuted;
-            protectedData.Location = new Point(18, 78);
+            protectedData.Location = new Point(18, 122);
 
             controls.Controls.Add(profileLabel);
             controls.Controls.Add(profileBox);
@@ -293,6 +319,8 @@ namespace Clnxr.Desktop
             controls.Controls.Add(diskMapButton);
             controls.Controls.Add(largeFilesButton);
             controls.Controls.Add(duplicatesButton);
+            controls.Controls.Add(startupButton);
+            controls.Controls.Add(lockedFileButton);
             controls.Controls.Add(viewReceiptButton);
             controls.Controls.Add(exportReceiptButton);
             controls.Controls.Add(customRuleButton);
@@ -528,6 +556,8 @@ namespace Clnxr.Desktop
             diskMapButton.Visible = toolToolbar;
             largeFilesButton.Visible = toolToolbar;
             duplicatesButton.Visible = toolToolbar;
+            startupButton.Visible = toolToolbar;
+            lockedFileButton.Visible = toolToolbar;
             viewReceiptButton.Visible = historyToolbar;
             exportReceiptButton.Visible = historyToolbar;
             customRuleButton.Visible = rulesToolbar;
@@ -824,7 +854,9 @@ namespace Clnxr.Desktop
                 new ToolRow { Name = "Caches de jogos e desenvolvimento", Status = "Perfis REVIEW disponíveis", Reason = "Unreal, NuGet, npm e pip são regras separadas, desmarcadas por padrão e com processos relacionados verificados." },
                 new ToolRow { Name = "Mapa de disco", Status = diskMapResult == null ? "Ainda não analisado" : diskMapResult.WasCancelled ? "Análise cancelada" : diskMapResult.DiskEntries.Count + " entrada(s) locais", Reason = "Somente leitura; junctions e caminhos indisponíveis são ignorados e relatados." },
                 new ToolRow { Name = "Arquivos grandes", Status = largeFilesResult == null ? "Ainda não analisado" : largeFilesResult.WasCancelled ? "Análise cancelada" : largeFilesResult.LargeFiles.Count + " resultado(s)", Reason = "Somente leitura; mostra até 100 arquivos a partir de 512 MB e não pré-seleciona nada." },
-                new ToolRow { Name = "Duplicados", Status = duplicatesResult == null ? "Ainda não analisado" : duplicatesResult.WasCancelled ? "Análise cancelada" : duplicatesResult.DuplicateGroups.Count + " grupo(s)", Reason = "Somente leitura; compara SHA-256 apenas após você acionar a ferramenta e não remove cópias." }
+                new ToolRow { Name = "Duplicados", Status = duplicatesResult == null ? "Ainda não analisado" : duplicatesResult.WasCancelled ? "Análise cancelada" : duplicatesResult.DuplicateGroups.Count + " grupo(s)", Reason = "Somente leitura; compara SHA-256 apenas após você acionar a ferramenta e não remove cópias." },
+                new ToolRow { Name = "Explorador de inicialização", Status = "Inventário disponível", Reason = "Lê Run/RunOnce e pastas de Inicialização; não desabilita, remove ou executa entradas." },
+                new ToolRow { Name = "Inspetor de arquivos bloqueados", Status = "Restart Manager somente leitura", Reason = "Consulta processos que mantêm um arquivo registrado; não encerra nem reinicia processos." }
             };
             grid.DataSource = new BindingList<ToolRow>(rows);
             recycleEmptyButton.Enabled = recycleBin != null && recycleBin.Available && recycleBin.ItemCount > 0 && activeOperation == null;
@@ -1028,6 +1060,112 @@ namespace Clnxr.Desktop
                 activeOperation = null;
                 SetBusy(false, null);
             }
+        }
+
+        private async Task ListStartupAsync()
+        {
+            if (activeOperation != null) return;
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Lendo locais de inicialização em modo somente leitura...", false);
+            try
+            {
+                StartupExplorerResult result = await Task.Run(delegate { return application.ListStartupEntries(); });
+                ShowStartupResult(result);
+            }
+            catch (Exception ex)
+            {
+                pageTitle.Text = "Explorador de inicialização";
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao consultar inicialização: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private async Task InspectLockedFileAsync()
+        {
+            if (activeOperation != null) return;
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Escolha um arquivo para inspecionar";
+                dialog.CheckFileExists = true;
+                dialog.Multiselect = false;
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                activeOperation = new CancellationTokenSource();
+                SetBusy(true, "Consultando processos associados em modo somente leitura...", false);
+                try
+                {
+                    LockedFileInspection result = await Task.Run(delegate { return application.InspectLockedFile(dialog.FileName); });
+                    ShowLockedFileResult(result);
+                }
+                catch (Exception ex)
+                {
+                    pageTitle.Text = "Inspetor de arquivos bloqueados";
+                    statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                    statusLabel.Text = "Falha ao consultar o arquivo: " + ex.Message;
+                }
+                finally
+                {
+                    activeOperation.Dispose();
+                    activeOperation = null;
+                    SetBusy(false, null);
+                }
+            }
+        }
+
+        private void ShowStartupResult(StartupExplorerResult result)
+        {
+            pageTitle.Text = "Explorador de inicialização";
+            pageDescription.Text = "Inventário somente leitura de Run/RunOnce e pastas de Inicialização. Nenhuma entrada é alterada.";
+            BuildSimpleColumns(new[]
+            {
+                new ColumnDefinition("Scope", "Escopo", 120),
+                new ColumnDefinition("Name", "Nome", 230),
+                new ColumnDefinition("Source", "Origem", 170),
+                new ColumnDefinition("Command", "Comando/caminho", 560)
+            });
+            grid.DataSource = new BindingList<StartupRow>(result.Entries.Select(entry => new StartupRow
+            {
+                Scope = entry.Scope,
+                Name = entry.Name,
+                Source = entry.Source,
+                Command = PathRedactor.Redact(entry.Command)
+            }).ToList());
+            summaryLabel.Text = string.Format("{0:N0} entrada(s) encontradas; nenhuma foi desabilitada ou executada.", result.Entries.Count);
+            statusLabel.ForeColor = result.Issues.Count == 0 ? Cyan : Review;
+            statusLabel.Text = result.Issues.Count == 0
+                ? "Consulta concluída em modo somente leitura."
+                : string.Format("Consulta concluída com {0:N0} aviso(s); entradas inacessíveis foram preservadas.", result.Issues.Count);
+        }
+
+        private void ShowLockedFileResult(LockedFileInspection result)
+        {
+            pageTitle.Text = "Inspetor de arquivos bloqueados";
+            pageDescription.Text = "Consulta Restart Manager somente leitura; o CLNXR não encerra, reinicia ou modifica processos e arquivos.";
+            BuildSimpleColumns(new[]
+            {
+                new ColumnDefinition("ProcessId", "PID", 90),
+                new ColumnDefinition("ApplicationName", "Aplicativo", 330),
+                new ColumnDefinition("ServiceName", "Serviço", 240),
+                new ColumnDefinition("ApplicationType", "Tipo", 180)
+            });
+            grid.DataSource = new BindingList<LockedProcessRow>(result.Processes.Select(process => new LockedProcessRow
+            {
+                ProcessId = process.ProcessId.ToString(),
+                ApplicationName = PathRedactor.Redact(process.ApplicationName),
+                ServiceName = PathRedactor.Redact(process.ServiceName),
+                ApplicationType = process.ApplicationType
+            }).ToList());
+            summaryLabel.Text = string.Format("Arquivo: {0} — {1:N0} processo(s) reportado(s).", PathRedactor.Redact(result.Path), result.Processes.Count);
+            statusLabel.ForeColor = result.Issues.Count == 0 ? Cyan : Review;
+            statusLabel.Text = result.Issues.Count == 0
+                ? "Consulta concluída em modo somente leitura."
+                : string.Join(" | ", result.Issues.Select(issue => PathRedactor.Redact(issue)).ToArray());
         }
 
         private void ShowDiskMapResult(StorageAnalysisResult result)
@@ -1735,6 +1873,8 @@ namespace Clnxr.Desktop
             diskMapButton.Enabled = !busy;
             largeFilesButton.Enabled = !busy;
             duplicatesButton.Enabled = !busy;
+            startupButton.Enabled = !busy;
+            lockedFileButton.Enabled = !busy;
             customRuleButton.Enabled = !busy;
             deleteCustomRuleButton.Enabled = !busy && currentPage == DesktopPage.Rules && IsCustomRuleSelected();
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;

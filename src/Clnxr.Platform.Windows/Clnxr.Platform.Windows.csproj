@@ -7,7 +7,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' "><DebugSymbols>true</DebugSymbols><DebugType>full</DebugType><Optimize>false</Optimize><OutputPath>bin\Debug\</OutputPath><DefineConstants>DEBUG;TRACE</DefineConstants></PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' "><DebugType>pdbonly</DebugType><Optimize>true</Optimize><OutputPath>bin\Release\</OutputPath><DefineConstants>TRACE</DefineConstants></PropertyGroup>
   <ItemGroup><Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Web.Extensions" /></ItemGroup>
-  <ItemGroup><Compile Include="CustomRuleService.cs" /><Compile Include="CustomRuleStore.cs" /><Compile Include="RecycleBinService.cs" /><Compile Include="RulePack.cs" /><Compile Include="StorageAnalysisService.cs" /><Compile Include="StorageSenseLauncher.cs" /><Compile Include="WindowsCandidateScanner.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="CustomRuleService.cs" /><Compile Include="CustomRuleStore.cs" /><Compile Include="LockedFileInspectorService.cs" /><Compile Include="RecycleBinService.cs" /><Compile Include="RulePack.cs" /><Compile Include="StartupExplorerService.cs" /><Compile Include="StorageAnalysisService.cs" /><Compile Include="StorageSenseLauncher.cs" /><Compile Include="WindowsCandidateScanner.cs" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="rules\windows.v1.json"><LogicalName>Clnxr.Platform.Windows.rules.windows.v1.json</LogicalName></EmbeddedResource></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Clnxr.Core\Clnxr.Core.csproj"><Project>{180580B5-9F8E-4BF1-B29F-01120A21E001}</Project><Name>Clnxr.Core</Name></ProjectReference>

@@ -48,6 +48,8 @@ namespace Clnxr.Application
         private readonly StorageSenseLauncher storageSenseLauncher;
         private readonly StorageAnalysisService storageAnalysisService;
         private readonly CustomRuleStore customRuleStore;
+        private readonly StartupExplorerService startupExplorerService;
+        private readonly LockedFileInspectorService lockedFileInspectorService;
 
         public CleanerApplicationService()
             : this(new PathSafetyPolicy(), new WindowsProcessInspector(), ReceiptStore.CreateDefault(), new RecycleBinService(), new StorageSenseLauncher(), new StorageAnalysisService())
@@ -86,6 +88,8 @@ namespace Clnxr.Application
             this.storageSenseLauncher = storageSenseLauncher;
             this.storageAnalysisService = storageAnalysisService;
             this.customRuleStore = customRuleStore;
+            startupExplorerService = new StartupExplorerService();
+            lockedFileInspectorService = new LockedFileInspectorService();
         }
 
         public ScanSession Analyze(ScanProfile profile, CancellationToken cancellationToken, Action<string> progress)
@@ -202,6 +206,16 @@ namespace Clnxr.Application
             Action<StorageAnalysisProgress> progress)
         {
             return storageAnalysisService.FindDuplicates(minimumBytes, maximumFilesToHash, cancellationToken, progress);
+        }
+
+        public StartupExplorerResult ListStartupEntries()
+        {
+            return startupExplorerService.ListEntries();
+        }
+
+        public LockedFileInspection InspectLockedFile(string path)
+        {
+            return lockedFileInspectorService.Inspect(path);
         }
     }
 }

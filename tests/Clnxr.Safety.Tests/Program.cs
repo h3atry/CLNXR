@@ -30,10 +30,11 @@ namespace Clnxr.Safety.Tests
                 TestCustomRulePreviewAndCleanup(fixtureRoot);
                 TestBrowserCacheRulesAndAge(fixtureRoot);
                 TestReadOnlyStorageTools(fixtureRoot);
+                TestP2ReadOnlyTools(fixtureRoot);
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 12 grupos de testes de seguranca, evidencia, catalogo declarativo, regras personalizadas e ferramentas somente leitura foram concluidos.");
+                Console.WriteLine("PASS: 13 grupos de testes de seguranca, evidencia, catalogo declarativo, regras personalizadas e ferramentas somente leitura foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -363,6 +364,31 @@ namespace Clnxr.Safety.Tests
 
             StorageAnalysisResult cancelled = service.FindLargeFiles(new[] { analysisRoot }, 0, 10, new CancellationToken(true), null);
             Expect(cancelled.WasCancelled, "Ferramenta somente leitura precisa respeitar cancelamento antes de percorrer arquivos.");
+        }
+
+        private static void TestP2ReadOnlyTools(string fixtureRoot)
+        {
+            StartupExplorerResult startup = new StartupExplorerService().ListEntries();
+            Expect(startup != null && startup.Entries != null && startup.Issues != null,
+                "Explorador de inicialização precisa produzir inventário e lista de avisos sem alterar o sistema.");
+
+            string root = Path.Combine(fixtureRoot, "locked-inspector");
+            Directory.CreateDirectory(root);
+            string path = Path.Combine(root, "held.tmp");
+            File.WriteAllBytes(path, new byte[] { 1, 2, 3 });
+            long before = new FileInfo(path).Length;
+            LockedFileInspection inspection;
+            using (FileStream handle = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                inspection = new LockedFileInspectorService().Inspect(path);
+            }
+
+            Expect(inspection != null && inspection.Supported,
+                "Inspetor de arquivos bloqueados precisa usar o Restart Manager disponível no Windows.");
+            Expect(inspection.Path == PathSafetyPolicy.Normalize(path),
+                "Inspetor de arquivos bloqueados precisa normalizar o caminho informado.");
+            Expect(new FileInfo(path).Length == before,
+                "Ferramentas P2 somente leitura não podem alterar o arquivo inspecionado.");
         }
 
         private static void TestStorageAnalysisMidTreeCancellation(string fixtureRoot)

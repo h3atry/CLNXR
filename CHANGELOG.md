@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-dev.3 — 2026-08-18
+
+- Adiciona Explorador de inicialização somente leitura para Run/RunOnce e pastas de Inicialização.
+- Adiciona Inspetor de arquivos bloqueados somente leitura usando o Restart Manager, sem encerrar ou reiniciar processos.
+- Integra as duas ferramentas à página Ferramentas e amplia os testes de segurança para 13 grupos.
+
 ## 0.1.0-dev.2 — 2026-08-18
 
 - Regras personalizadas locais com editor na página Regras, prévia redigida antes de salvar, pasta/idade/extensões/exclusões/atribuição e persistência versionada.

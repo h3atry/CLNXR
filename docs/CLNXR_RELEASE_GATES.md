@@ -28,6 +28,7 @@
 - [ ] Pacote de regras assinado e atualizado por canal autenticado.
 - [x] Motor somente leitura para mapa de disco, arquivos grandes e grupos duplicados, com cancelamento, limite de candidatos e exclusão de reparse points.
 - [x] Interface provisória compilada expõe Mapa de disco, Arquivos grandes e Duplicados como ações explícitas; duplicados exige confirmação antes do hash.
+- [x] Interface provisória compilada expõe Explorador de inicialização e Inspetor de arquivos bloqueados como ações somente leitura; não há desativação de entradas, encerramento de processos ou alteração de arquivos.
 - [ ] Teste visual e teste de desempenho das ferramentas P1 em volumes grandes.
 - [ ] Testes de integração por launcher/jogo/ambiente de desenvolvimento em VM antes de ampliar o catálogo.
 - [ ] Filtros e virtualização de resultados para catálogos grandes.
