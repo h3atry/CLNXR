@@ -105,6 +105,8 @@ namespace Clnxr.Desktop
         public string Name { get; set; }
         public string Source { get; set; }
         public string Command { get; set; }
+        public StartupEntry Entry { get; set; }
+        public DisabledStartupEntry DisabledEntry { get; set; }
     }
 
     internal sealed class LockedProcessRow
@@ -113,6 +115,16 @@ namespace Clnxr.Desktop
         public string ApplicationName { get; set; }
         public string ServiceName { get; set; }
         public string ApplicationType { get; set; }
+    }
+
+    internal sealed class UninstallResidualRow
+    {
+        public string DisplayName { get; set; }
+        public string Publisher { get; set; }
+        public string Version { get; set; }
+        public string Status { get; set; }
+        public string InstallLocation { get; set; }
+        public string RegistryLocation { get; set; }
     }
 
     internal sealed class MainForm : Form
@@ -139,6 +151,12 @@ namespace Clnxr.Desktop
         private readonly Button duplicatesButton;
         private readonly Button startupButton;
         private readonly Button lockedFileButton;
+        private readonly Button residualsButton;
+        private readonly Button scheduleButton;
+        private readonly Button unscheduleButton;
+        private readonly Button disableStartupButton;
+        private readonly Button disabledStartupButton;
+        private readonly Button restoreStartupButton;
         private readonly Button viewReceiptButton;
         private readonly Button exportReceiptButton;
         private readonly Button customRuleButton;
@@ -165,6 +183,7 @@ namespace Clnxr.Desktop
         private StorageAnalysisResult duplicatesResult;
         private readonly object storageProgressLock = new object();
         private DateTime lastStorageProgressUtc;
+        private bool showingDisabledStartup;
 
         public MainForm()
         {
@@ -212,7 +231,7 @@ namespace Clnxr.Desktop
 
             Panel controls = new Panel();
             controls.Dock = DockStyle.Top;
-            controls.Height = 150;
+            controls.Height = 190;
             controls.BackColor = PanelColor;
             controls.Padding = new Padding(16, 12, 16, 10);
             controls.Location = new Point(26, 98);
@@ -283,6 +302,32 @@ namespace Clnxr.Desktop
             lockedFileButton.Visible = false;
             lockedFileButton.Click += async delegate { await InspectLockedFileAsync(); };
 
+            residualsButton = CreateActionButton("Resíduos", Review, new Point(312, 78));
+            residualsButton.Visible = false;
+            residualsButton.Click += async delegate { await ListUninstallResidualsAsync(); };
+
+            scheduleButton = CreateActionButton("Agendar Seguro", Cyan, new Point(410, 78));
+            scheduleButton.Visible = false;
+            scheduleButton.Click += async delegate { await ScheduleSafeCleanupAsync(); };
+
+            unscheduleButton = CreateActionButton("Desfazer agendamento", Review, new Point(550, 78));
+            unscheduleButton.Visible = false;
+            unscheduleButton.Click += async delegate { await RemoveScheduledCleanupAsync(); };
+
+            disableStartupButton = CreateActionButton("Desabilitar selecionada", Review, new Point(750, 78));
+            disableStartupButton.Visible = false;
+            disableStartupButton.Enabled = false;
+            disableStartupButton.Click += async delegate { await DisableSelectedStartupAsync(); };
+
+            disabledStartupButton = CreateActionButton("Ver desabilitadas", Cyan, new Point(18, 116));
+            disabledStartupButton.Visible = false;
+            disabledStartupButton.Click += async delegate { await ShowDisabledStartupAsync(); };
+
+            restoreStartupButton = CreateActionButton("Restaurar selecionada", Success, new Point(166, 116));
+            restoreStartupButton.Visible = false;
+            restoreStartupButton.Enabled = false;
+            restoreStartupButton.Click += async delegate { await RestoreSelectedStartupAsync(); };
+
             viewReceiptButton = CreateActionButton("Ver recibo", Cyan, new Point(18, 40));
             viewReceiptButton.Visible = false;
             viewReceiptButton.Enabled = false;
@@ -306,7 +351,7 @@ namespace Clnxr.Desktop
             protectedData.Text = "Proteção fixa: navegadores, logins, cookies, Downloads, saves e arquivos pessoais ficam fora do catálogo.";
             protectedData.AutoSize = true;
             protectedData.ForeColor = TextMuted;
-            protectedData.Location = new Point(18, 122);
+            protectedData.Location = new Point(18, 160);
 
             controls.Controls.Add(profileLabel);
             controls.Controls.Add(profileBox);
@@ -321,6 +366,12 @@ namespace Clnxr.Desktop
             controls.Controls.Add(duplicatesButton);
             controls.Controls.Add(startupButton);
             controls.Controls.Add(lockedFileButton);
+            controls.Controls.Add(residualsButton);
+            controls.Controls.Add(scheduleButton);
+            controls.Controls.Add(unscheduleButton);
+            controls.Controls.Add(disableStartupButton);
+            controls.Controls.Add(disabledStartupButton);
+            controls.Controls.Add(restoreStartupButton);
             controls.Controls.Add(viewReceiptButton);
             controls.Controls.Add(exportReceiptButton);
             controls.Controls.Add(customRuleButton);
@@ -386,6 +437,8 @@ namespace Clnxr.Desktop
             {
                 if (currentPage == DesktopPage.Rules && deleteCustomRuleButton != null)
                     deleteCustomRuleButton.Enabled = IsCustomRuleSelected();
+                if (currentPage == DesktopPage.Tools)
+                    UpdateStartupActions();
             };
 
             Panel footer = new Panel();
@@ -558,6 +611,13 @@ namespace Clnxr.Desktop
             duplicatesButton.Visible = toolToolbar;
             startupButton.Visible = toolToolbar;
             lockedFileButton.Visible = toolToolbar;
+            residualsButton.Visible = toolToolbar;
+            scheduleButton.Visible = toolToolbar;
+            unscheduleButton.Visible = toolToolbar;
+            disableStartupButton.Visible = toolToolbar;
+            disabledStartupButton.Visible = toolToolbar;
+            restoreStartupButton.Visible = toolToolbar;
+            UpdateStartupActions();
             viewReceiptButton.Visible = historyToolbar;
             exportReceiptButton.Visible = historyToolbar;
             customRuleButton.Visible = rulesToolbar;
@@ -829,7 +889,7 @@ namespace Clnxr.Desktop
         private void ShowTools()
         {
             pageTitle.Text = "Ferramentas";
-            pageDescription.Text = "Ferramentas P1 são separadas do limpador principal para não ocultar risco ou ampliar escopo sem revisão.";
+            pageDescription.Text = "Ferramentas P1/P2 são separadas do limpador principal para não ocultar risco ou ampliar escopo sem revisão.";
             RenderTools();
             cleanButton.Enabled = false;
         }
@@ -855,8 +915,10 @@ namespace Clnxr.Desktop
                 new ToolRow { Name = "Mapa de disco", Status = diskMapResult == null ? "Ainda não analisado" : diskMapResult.WasCancelled ? "Análise cancelada" : diskMapResult.DiskEntries.Count + " entrada(s) locais", Reason = "Somente leitura; junctions e caminhos indisponíveis são ignorados e relatados." },
                 new ToolRow { Name = "Arquivos grandes", Status = largeFilesResult == null ? "Ainda não analisado" : largeFilesResult.WasCancelled ? "Análise cancelada" : largeFilesResult.LargeFiles.Count + " resultado(s)", Reason = "Somente leitura; mostra até 100 arquivos a partir de 512 MB e não pré-seleciona nada." },
                 new ToolRow { Name = "Duplicados", Status = duplicatesResult == null ? "Ainda não analisado" : duplicatesResult.WasCancelled ? "Análise cancelada" : duplicatesResult.DuplicateGroups.Count + " grupo(s)", Reason = "Somente leitura; compara SHA-256 apenas após você acionar a ferramenta e não remove cópias." },
-                new ToolRow { Name = "Explorador de inicialização", Status = "Inventário disponível", Reason = "Lê Run/RunOnce e pastas de Inicialização; não desabilita, remove ou executa entradas." },
-                new ToolRow { Name = "Inspetor de arquivos bloqueados", Status = "Restart Manager somente leitura", Reason = "Consulta processos que mantêm um arquivo registrado; não encerra nem reinicia processos." }
+                new ToolRow { Name = "Explorador de inicialização", Status = "Inventário + HKCU reversível", Reason = "Lê Run/RunOnce e pastas de Inicialização; permite desabilitar somente entradas HKCU após confirmação, com backup local para desfazer. HKLM e arquivos não são alterados." },
+                new ToolRow { Name = "Inspetor de arquivos bloqueados", Status = "Restart Manager somente leitura", Reason = "Consulta processos que mantêm um arquivo registrado; não encerra nem reinicia processos." },
+                new ToolRow { Name = "Resíduos de desinstalação", Status = "Inventário disponível", Reason = "Compara apenas InstallLocation declarado por entradas conhecidas; não adivinha chaves, não executa desinstaladores e não apaga Registro." },
+                new ToolRow { Name = "Limpeza segura agendada", Status = "Opt-in; perfil Seguro fixo", Reason = "Cria tarefa diária reversível via schtasks.exe somente após confirmação; argumentos não são editáveis e não há elevação automática." }
             };
             grid.DataSource = new BindingList<ToolRow>(rows);
             recycleEmptyButton.Enabled = recycleBin != null && recycleBin.Available && recycleBin.ItemCount > 0 && activeOperation == null;
@@ -1120,8 +1182,9 @@ namespace Clnxr.Desktop
 
         private void ShowStartupResult(StartupExplorerResult result)
         {
+            showingDisabledStartup = false;
             pageTitle.Text = "Explorador de inicialização";
-            pageDescription.Text = "Inventário somente leitura de Run/RunOnce e pastas de Inicialização. Nenhuma entrada é alterada.";
+            pageDescription.Text = "Inventário de Run/RunOnce e pastas de Inicialização. Entradas HKCU podem ser desabilitadas com backup reversível; HKLM e arquivos não são alterados automaticamente.";
             BuildSimpleColumns(new[]
             {
                 new ColumnDefinition("Scope", "Escopo", 120),
@@ -1134,13 +1197,159 @@ namespace Clnxr.Desktop
                 Scope = entry.Scope,
                 Name = entry.Name,
                 Source = entry.Source,
-                Command = PathRedactor.Redact(entry.Command)
+                Command = PathRedactor.Redact(entry.Command),
+                Entry = entry
             }).ToList());
-            summaryLabel.Text = string.Format("{0:N0} entrada(s) encontradas; nenhuma foi desabilitada ou executada.", result.Entries.Count);
+            summaryLabel.Text = string.Format("{0:N0} entrada(s) encontradas; desabilitação exige seleção e confirmação.", result.Entries.Count);
             statusLabel.ForeColor = result.Issues.Count == 0 ? Cyan : Review;
             statusLabel.Text = result.Issues.Count == 0
                 ? "Consulta concluída em modo somente leitura."
                 : string.Format("Consulta concluída com {0:N0} aviso(s); entradas inacessíveis foram preservadas.", result.Issues.Count);
+            UpdateStartupActions();
+        }
+
+        private async Task ShowDisabledStartupAsync()
+        {
+            if (activeOperation != null) return;
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Lendo backups reversíveis de inicialização...", false);
+            try
+            {
+                IList<DisabledStartupEntry> entries = await Task.Run(delegate { return application.ListDisabledStartupEntries(); });
+                ShowDisabledStartupResult(entries);
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao ler backups de inicialização: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private void ShowDisabledStartupResult(IList<DisabledStartupEntry> entries)
+        {
+            showingDisabledStartup = true;
+            pageTitle.Text = "Inicialização desabilitada";
+            pageDescription.Text = "Backups locais reversíveis do CLNXR. Restaurar apenas recoloca o valor original em HKCU; nada é executado nesta tela.";
+            BuildSimpleColumns(new[]
+            {
+                new ColumnDefinition("Scope", "Escopo", 120),
+                new ColumnDefinition("Name", "Nome", 230),
+                new ColumnDefinition("Source", "Origem", 190),
+                new ColumnDefinition("Command", "Comando/caminho", 560)
+            });
+            grid.DataSource = new BindingList<StartupRow>((entries ?? new List<DisabledStartupEntry>()).Select(entry => new StartupRow
+            {
+                Scope = entry.Scope,
+                Name = entry.Name,
+                Source = entry.Source,
+                Command = PathRedactor.Redact(entry.Command),
+                DisabledEntry = entry
+            }).ToList());
+            int count = entries == null ? 0 : entries.Count;
+            summaryLabel.Text = count == 0 ? "Nenhum backup reversível encontrado." : string.Format("{0:N0} backup(s) reversível(is) encontrado(s).", count);
+            statusLabel.ForeColor = Cyan;
+            statusLabel.Text = "Nenhuma entrada foi restaurada nesta consulta.";
+            UpdateStartupActions();
+        }
+
+        private async Task DisableSelectedStartupAsync()
+        {
+            StartupRow row = grid.CurrentRow == null ? null : grid.CurrentRow.DataBoundItem as StartupRow;
+            if (row == null || row.Entry == null || !row.Entry.CanDisable)
+            {
+                statusLabel.Text = "Selecione uma entrada de Registro HKCU desabilitável; HKLM e pastas não são alterados aqui.";
+                return;
+            }
+            string confirmation = string.Format("Desabilitar a entrada de inicialização '{0}'?\r\n\r\nO CLNXR guardará o valor original em backup local reversível e não apagará a chave do Registro.", row.Name);
+            if (MessageBox.Show(this, confirmation, "Confirmar desabilitação", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.Text = "Desabilitação cancelada antes da alteração.";
+                return;
+            }
+
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Desabilitando entrada HKCU com backup reversível...", false);
+            try
+            {
+                StartupMutationResult result = await Task.Run(delegate { return application.DisableStartupEntry(row.Entry); });
+                statusLabel.ForeColor = result.Succeeded ? Success : Color.FromArgb(235, 104, 104);
+                statusLabel.Text = result.Message;
+                if (result.Succeeded)
+                {
+                    StartupExplorerResult refreshed = await Task.Run(delegate { return application.ListStartupEntries(); });
+                    ShowStartupResult(refreshed);
+                }
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao desabilitar entrada: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private async Task RestoreSelectedStartupAsync()
+        {
+            StartupRow row = grid.CurrentRow == null ? null : grid.CurrentRow.DataBoundItem as StartupRow;
+            if (row == null || row.DisabledEntry == null)
+            {
+                statusLabel.Text = "Abra Ver desabilitadas e selecione um backup reversível.";
+                return;
+            }
+            string confirmation = string.Format("Restaurar a entrada '{0}' no Registro HKCU?\r\n\r\nO backup só será removido depois que o valor original for recolocado.", row.Name);
+            if (MessageBox.Show(this, confirmation, "Confirmar restauração", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.Text = "Restauração cancelada antes da alteração.";
+                return;
+            }
+
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Restaurando entrada HKCU a partir do backup...", false);
+            try
+            {
+                StartupMutationResult result = await Task.Run(delegate { return application.RestoreStartupEntry(row.DisabledEntry); });
+                statusLabel.ForeColor = result.Succeeded ? Success : Color.FromArgb(235, 104, 104);
+                statusLabel.Text = result.Message;
+                if (result.Succeeded)
+                {
+                    IList<DisabledStartupEntry> refreshed = await Task.Run(delegate { return application.ListDisabledStartupEntries(); });
+                    ShowDisabledStartupResult(refreshed);
+                }
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao restaurar entrada: " + ex.Message;
+            }
+            finally
+            {
+                if (activeOperation != null)
+                {
+                    activeOperation.Dispose();
+                    activeOperation = null;
+                }
+                SetBusy(false, null);
+            }
+        }
+
+        private void UpdateStartupActions()
+        {
+            if (disableStartupButton == null || disabledStartupButton == null || restoreStartupButton == null) return;
+            StartupRow row = grid == null || grid.CurrentRow == null ? null : grid.CurrentRow.DataBoundItem as StartupRow;
+            disableStartupButton.Enabled = !showingDisabledStartup && row != null && row.Entry != null && row.Entry.CanDisable && activeOperation == null;
+            restoreStartupButton.Enabled = showingDisabledStartup && row != null && row.DisabledEntry != null && activeOperation == null;
+            disabledStartupButton.Enabled = activeOperation == null;
         }
 
         private void ShowLockedFileResult(LockedFileInspection result)
@@ -1166,6 +1375,129 @@ namespace Clnxr.Desktop
             statusLabel.Text = result.Issues.Count == 0
                 ? "Consulta concluída em modo somente leitura."
                 : string.Join(" | ", result.Issues.Select(issue => PathRedactor.Redact(issue)).ToArray());
+        }
+
+        private async Task ListUninstallResidualsAsync()
+        {
+            if (activeOperation != null) return;
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Lendo entradas de desinstalação em modo somente leitura...", false);
+            try
+            {
+                UninstallResidualResult result = await Task.Run(delegate { return application.ListUninstallResiduals(); });
+                ShowUninstallResidualResult(result);
+            }
+            catch (Exception ex)
+            {
+                pageTitle.Text = "Resíduos de desinstalação";
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao consultar resíduos: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private async Task ScheduleSafeCleanupAsync()
+        {
+            if (activeOperation != null) return;
+            const string confirmation = "Agendar limpeza diária do perfil Seguro às 03:00?\r\n\r\n" +
+                "A tarefa usará apenas regras SAFE, executará o CLNXR portátil com --clean --yes e poderá ser removida pelo botão Desfazer agendamento. " +
+                "Nenhuma elevação automática será solicitada.";
+            if (MessageBox.Show(this, confirmation, "Confirmar agendamento", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.Text = "Agendamento cancelado antes de alterar o Task Scheduler.";
+                return;
+            }
+
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Criando tarefa agendada do perfil Seguro...", false);
+            try
+            {
+                ToolExecution result = await Task.Run(delegate
+                {
+                    return application.ScheduleSafeDailyCleanup(System.Windows.Forms.Application.ExecutablePath);
+                });
+                RenderTools();
+                statusLabel.ForeColor = result.Succeeded ? Success : Color.FromArgb(235, 104, 104);
+                statusLabel.Text = result.Message + " Recibo local: " + result.ReceiptPath;
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao agendar limpeza segura: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private async Task RemoveScheduledCleanupAsync()
+        {
+            if (activeOperation != null) return;
+            const string confirmation = "Remover a tarefa fixa CLNXR Safe Daily Cleanup?\r\n\r\nNenhum arquivo será limpo agora; apenas o agendamento será removido.";
+            if (MessageBox.Show(this, confirmation, "Desfazer agendamento", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.Text = "Remoção do agendamento cancelada.";
+                return;
+            }
+
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Removendo a tarefa agendada do perfil Seguro...", false);
+            try
+            {
+                ToolExecution result = await Task.Run(delegate { return application.RemoveScheduledSafeCleanup(); });
+                RenderTools();
+                statusLabel.ForeColor = result.Succeeded ? Success : Color.FromArgb(235, 104, 104);
+                statusLabel.Text = result.Message + " Recibo local: " + result.ReceiptPath;
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao desfazer agendamento: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private void ShowUninstallResidualResult(UninstallResidualResult result)
+        {
+            pageTitle.Text = "Resíduos de desinstalação";
+            pageDescription.Text = "Inventário somente leitura; só entradas com InstallLocation declarado e ausente são marcadas como candidatas.";
+            BuildSimpleColumns(new[]
+            {
+                new ColumnDefinition("DisplayName", "Aplicativo", 270),
+                new ColumnDefinition("Publisher", "Publicador", 180),
+                new ColumnDefinition("Version", "Versão", 100),
+                new ColumnDefinition("Status", "Estado", 310),
+                new ColumnDefinition("InstallLocation", "InstallLocation", 420),
+                new ColumnDefinition("RegistryLocation", "Registro", 360)
+            });
+            grid.DataSource = new BindingList<UninstallResidualRow>(result.Entries.Select(entry => new UninstallResidualRow
+            {
+                DisplayName = entry.DisplayName,
+                Publisher = entry.Publisher,
+                Version = entry.Version,
+                Status = entry.Status,
+                InstallLocation = entry.InstallLocation,
+                RegistryLocation = entry.RegistryLocation
+            }).ToList());
+            int candidates = result.Entries.Count(entry => entry.IsResidual);
+            summaryLabel.Text = string.Format("{0:N0} entrada(s) inventariadas; {1:N0} candidata(s) por caminho declarado ausente.", result.Entries.Count, candidates);
+            statusLabel.ForeColor = result.Issues.Count == 0 ? Cyan : Review;
+            statusLabel.Text = result.Issues.Count == 0
+                ? "Nenhuma chave foi alterada e nenhum desinstalador foi executado."
+                : string.Format("Consulta concluída com {0:N0} aviso(s); entradas inacessíveis foram preservadas.", result.Issues.Count);
         }
 
         private void ShowDiskMapResult(StorageAnalysisResult result)
@@ -1875,6 +2207,12 @@ namespace Clnxr.Desktop
             duplicatesButton.Enabled = !busy;
             startupButton.Enabled = !busy;
             lockedFileButton.Enabled = !busy;
+            residualsButton.Enabled = !busy;
+            scheduleButton.Enabled = !busy;
+            unscheduleButton.Enabled = !busy;
+            disableStartupButton.Enabled = false;
+            disabledStartupButton.Enabled = !busy;
+            restoreStartupButton.Enabled = false;
             customRuleButton.Enabled = !busy;
             deleteCustomRuleButton.Enabled = !busy && currentPage == DesktopPage.Rules && IsCustomRuleSelected();
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
@@ -1883,6 +2221,7 @@ namespace Clnxr.Desktop
                 statusLabel.ForeColor = Cyan;
                 statusLabel.Text = message;
             }
+            if (!busy) UpdateStartupActions();
         }
 
         private void ReportScanProgress(string message)

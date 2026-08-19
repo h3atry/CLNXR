@@ -1,14 +1,13 @@
-# CLNXR — Arquitetura atual (auditoria de linha de base)
+# CLNXR — Arquitetura atual (auditoria de 18/08/2026)
 
 ## Escopo e evidência
 
-Esta auditoria descreve o estado encontrado em 18 de agosto de 2026 em `D:\Projects\limpador`.
+Esta auditoria descreve o estado verificável em 18 de agosto de 2026 em `D:\Projects\limpador`. Build, testes e pacote são evidências locais; não equivalem a assinatura, compatibilidade universal, ausência de malware ou prontidão de beta.
 
-- Linha de base histórica: um único arquivo `Program.cs` (WinForms / .NET Framework) e o artefato anterior `H3ATRY Cache Cleaner.exe`.
 - Estado atual: solução modular em `src/` com executável gráfico, CLI, pacote declarativo de regras Windows e quatro smokes separados.
-- Controle de versão: na auditoria inicial não havia repositório próprio. O projeto agora possui `.git` próprio em `D:\Projects\limpador`, mas ainda não existe baseline commitado para release.
-- Ferramenta de compilação disponível: compilador C# do .NET Framework 4.x, limitado a C# 5. Não há SDK moderno do .NET instalado.
-- Execução do artefato: não foi usada como prova nesta auditoria. A análise é estrutural; ela não comprova comportamento em todas as versões do Windows.
+- Controle de versão: repositório próprio com commits publicados em `master`/`main` e pré-release técnico no GitHub; os gates externos continuam pendentes.
+- Ferramenta de compilação disponível: compilador C# do .NET Framework 4.x, limitado a C# 5. Não há SDK/targeting pack oficial moderno fixado.
+- Execução do artefato: smokes carregam os assemblies, mas a UI não foi validada visualmente. A análise estrutural não comprova comportamento em todas as versões do Windows.
 
 ## Componentes atuais
 
@@ -20,6 +19,9 @@ Esta auditoria descreve o estado encontrado em 18 de agosto de 2026 em `D:\Proje
 | `CleanupExecutor` | Revalida política, processo, reparse point e remove somente alvos elegíveis | Não substitui testes de ACL/concorrência em VM e não encerra processos por design. |
 | `ScanSession` / `CleanupReceipt` | Resultado de análise, ação, contagens, bytes, saltos e hash persistido | Migração formal de versões de recibo e assinatura do recibo ainda não existem. |
 | `WindowsRulePack` | Carrega JSON embutido, valida schema, versão, IDs, perfis e riscos | O pacote é versionado, mas não assinado nem atualizável de forma autenticada. |
+| `StartupExplorerService` | Enumera HKCU/HKLM Run/RunOnce e pastas; permite apenas mutação HKCU com revalidação e backup reversível | Não executa comandos, não toca HKLM/pastas e não eleva automaticamente; restauração real ainda requer teste manual controlado. |
+| `UninstallResidualService` | Inventaria entradas conhecidas e marca somente `InstallLocation` declarado ausente | Não adivinha sobras, não remove Registro e não executa desinstaladores. |
+| `ScheduledCleanupService` | Constrói e executa comando fixo de `schtasks.exe` para perfil Seguro diário; remove a mesma tarefa | Contrato testado sem mutação; execução real depende de Task Scheduler/conta e confirmação manual. |
 
 ## Comportamento já presente
 
@@ -29,27 +31,24 @@ Fatos observados no código:
 2. Examina unidades fixas e removíveis prontas e procura perfis abaixo de `X:\Users`.
 3. Limita os alvos a temporários, relatórios/dumps, caches de GPU e miniaturas conhecidas.
 4. Não inclui explicitamente cookies, credenciais, histórico, Downloads, saves ou arquivos pessoais.
-5. Ignora entradas marcadas como `ReparsePoint` durante parte da leitura e antes da exclusão recursiva.
+5. Ignora entradas marcadas como `ReparsePoint` durante a leitura e antes da exclusão recursiva.
 6. A limpeza calcula bytes liberados somente para arquivos removidos com sucesso e executa uma nova análise após o fluxo de limpeza.
+7. A página Ferramentas separa inventário de mutações: HKCU Run/RunOnce pode ser desabilitado com confirmação e desfazer; resíduos de desinstalação são somente candidatos; agendamento é opt-in, fixo e removível.
 
 ## Limites e riscos atuais
 
 | Severidade | Lacuna | Consequência |
 | --- | --- | --- |
 | Alta | O pacote declarativo ainda não tem assinatura nem mecanismo de atualização autenticada. | Uma distribuição pública não pode confiar em regras alteradas sem verificação criptográfica. |
-| Alta | Não há modelo de risco (`SAFE`, `REVIEW`, `ADVANCED`, `BLOCKED`). | A interface não comunica claramente o limite de cada ação. |
-| Alta | Não há validação de raiz canônica + revalidação imediatamente antes de apagar. | A proteção atual contra junction/symlink reduz risco, mas não é defesa completa contra troca de caminho/TOCTOU. |
-| Alta | Sem detecção de processos que usam cache. | Pode produzir bloqueios, resultados parciais ou afetar aplicativos abertos. |
-| Média | Exceções são descartadas no medidor de arquivos. | Perde-se a explicação de dados incompletos e não há auditoria. |
-| Média | Não existe cancelamento de scan/limpeza. | Operações longas não são controláveis pelo usuário. |
-| Média | Não existe histórico, manifesto ou recibo persistente. | Não há prova local verificável do que foi avaliado e do que foi removido. |
-| Média | Não há testes automatizados, fixtures, sandbox de integração nem testes de concorrência. | Qualquer mudança de regra pode regredir segurança sem detecção. |
-| Média | Há repositório e solução locais, mas não há baseline commitado, targeting pack/SDK fixado ou pipeline de release. | A build local é verificável, mas ainda não é reprodutível para distribuição segura. |
+| Alta | A UI/scan usa contratos de segurança e revalidação, mas faltam VM, ACL negada, hard link e concorrência ampla. | Fixtures locais reduzem risco conhecido, mas não cobrem todos os mecanismos do Windows. |
+| Média | Resultados ainda não são virtualizados e não há benchmark de 60 FPS/volumes grandes. | Catálogos grandes podem degradar a experiência visual. |
+| Média | Agendamento e mutação HKCU têm contratos fixos, mas execução real foi mantida fora dos testes automatizados. | O contrato é verificável; comportamento de conta/Task Scheduler/Registro precisa de validação manual. |
+| Média | Há repositório e solução publicados, mas targeting pack/SDK fixado e pipeline reprodutível ainda não existem. | A build local é verificável, mas não é release reproduzível. |
 | Baixa | O nome visual é provisório. | Não bloqueia o núcleo, mas bloqueia publicação até validação de marca. |
 
 ## Decisão de migração
 
-O motor atual é pequeno e parcialmente reutilizável, mas a separação deve ocorrer antes de uma troca grande de interface. A recomendação é manter o executável WinForms como protótipo legado até existir um núcleo testado e uma interface adaptadora nova.
+O motor atual é modular e reutilizável, mas a separação de orquestração de tela ainda deve melhorar antes de uma troca grande de interface. A recomendação continua sendo manter o executável WinForms como protótipo até existir SDK moderno, validação visual e uma interface adaptadora nova.
 
 O roadmap sugere PySide6/QML apenas para um motor Python existente. Este projeto é C#, então adotar Python e QML agora criaria uma reescrita dupla sem benefício demonstrado. A trilha local proposta é C# com núcleo independente da GUI; a escolha entre WinForms temporário, WPF ou WinUI será feita somente depois de haver SDK moderno e protótipo visual validado.
 

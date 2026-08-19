@@ -4,7 +4,7 @@ Este roteiro é uma validação manual do build portátil. Não execute limpeza 
 
 ## Pré-condições
 
-- Extrair `artifacts\CLNXR-Portable-0.1.0-dev.zip`, abrir `CLNXR-Portable\CLNXR-Portable.exe` e conferir os hashes em `CLNXR-Portable\SHA256SUMS.txt`. O mesmo diretório contém `CLNXR.Cli.exe` para dry-run/JSON.
+- Extrair `artifacts\CLNXR-Portable-0.1.0-dev.4.zip`, abrir `CLNXR-Portable\CLNXR-Portable.exe` e conferir os hashes em `CLNXR-Portable\SHA256SUMS.txt`. O mesmo diretório contém `CLNXR.Cli.exe` para dry-run/JSON.
 - Registrar versão do Windows, resolução, escala do sistema e se o usuário tem alto contraste/movimento reduzido ativo.
 - Não estar em sessão de jogo ou outra atividade que não possa ser interrompida.
 - Não selecionar nem confirmar remoção de achados reais nesta validação.
@@ -17,6 +17,8 @@ Este roteiro é uma validação manual do build portátil. Não execute limpeza 
 | Escala | Reabrir em 100%, 125% e 150% de escala do Windows. | Texto, botões, grade e rodapé permanecem legíveis; nenhum controle essencial fica inacessível. |
 | Navegação | Abrir Analisar, Resultados, Ferramentas, Histórico, Regras e Configurações, sem acionar limpeza. | Título, descrição e controles correspondem à seção; não há travamento nem ação implícita. |
 | Ferramentas P1 | Conferir Mapa de disco, Arquivos grandes e Duplicados. Não iniciar varredura se houver dados sensíveis na tela. | Os textos deixam claro que são inventário somente leitura; Duplicados pede confirmação antes de calcular hash. |
+| Inicialização reversível | Em uma conta de teste, abrir Inicialização, selecionar um valor `HKCU` conhecido e usar Desabilitar selecionada; depois abrir Ver desabilitadas e restaurar. | Há confirmação explícita, o valor reaparece após nova consulta e o backup é removido somente depois da restauração. Não usar `HKLM`, pasta de Inicialização ou comando desconhecido como primeiro teste. |
+| Agendamento opt-in | Em uma cópia portátil de teste, acionar Agendar Seguro e depois Desfazer agendamento. | A UI informa o perfil Seguro, 03:00, ausência de elevação automática, recibo local e resultado real do Task Scheduler; nenhum outro perfil é agendado. |
 | Histórico vazio | Abrir Histórico sem selecionar arquivo externo. | A página informa que não há recibos, não envia dados e deixa ações dependentes de seleção desativadas. |
 | Histórico com recibo | Após uma futura limpeza controlada em fixture/VM, abrir Histórico, selecionar um recibo e usar Ver recibo. | A tabela mostra campos e resultados; o estado de integridade SHA-256 fica visível; não há edição do JSON. |
 | Recibo inválido | Em uma fixture, duplicar um recibo e alterar uma letra sem atualizar o hash. | Histórico indica falha de integridade; o visualizador ainda pode informar o conteúdo local, mas não declara o recibo íntegro. |
