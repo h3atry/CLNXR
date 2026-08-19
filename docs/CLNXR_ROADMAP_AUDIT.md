@@ -48,7 +48,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
-| Estado Git | `v0.1.0-dev.6` preparado localmente para publicação | O commit e a release serão verificados após a publicação; o código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
+| Estado Git | `v0.1.0-dev.6` publicado em `master`/`main` e release prévia do GitHub | Commit remoto verificado: `1d257e82b5d2dd5337da9f85cdc8ad5c8b3fd842`; release `https://github.com/h3atry/CLNXR/releases/tag/v0.1.0-dev.6` com ZIP `sha256:a137fa7e0e3a72995835741bafcf4d85c4f9bd14ea8f2b4dc7381aa0289b493c` e checksums `sha256:1249b39043f249f375ffaaaa3ad9c1a02f2773ab8886a709e77fa9397f6e14ac`. O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
 
 ## Decisão de término honesta
 
