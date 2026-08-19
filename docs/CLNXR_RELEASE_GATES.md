@@ -10,6 +10,8 @@
 - [x] Solução local com assemblies separados e build Release executado pelo MSBuild clássico; os executáveis de teste carregaram as dependências físicas.
 - [ ] Targeting pack/SDK fixado e build sem avisos de referências ou arquitetura.
 - [x] Build local do executável de desenvolvimento.
+- [x] Grade de resultados virtualizada, com seleção/filtros preservados e smoke não visual do contrato.
+- [x] Preferência local de movimento reduzido sanitizada e persistida sem telemetria.
 - [x] Pacote ZIP local com executável, política de privacidade, versão, SBOM de desenvolvimento e checksum do executável.
 - [ ] Teste visual interativo do build novo.
 - [x] Testes com junction NTFS real, alvo trocado por junction (TOCTOU), symlink separado, arquivo real em uso e cancelamento antes da ação.
@@ -36,7 +38,7 @@
 - [x] Contratos P3 cobertos no sandbox, incluindo catálogo fechado, volume validado, recusa de switches/caminhos arbitrários e não execução silenciosa de reset.
 - [ ] Teste visual e teste de desempenho das ferramentas P1 em volumes grandes.
 - [ ] Testes de integração por launcher/jogo/ambiente de desenvolvimento em VM antes de ampliar o catálogo.
-- [ ] Filtros e virtualização de resultados para catálogos grandes.
+- [x] Filtros e virtualização de resultados para catálogos grandes (contrato local; benchmark de volume ainda pendente).
 - [x] Exportação explícita de recibos JSON locais e verificação de integridade SHA-256 no histórico.
 - [x] Recibos novos declaram o esquema `clnxr.receipt.v1` e a verificação local exige a versão e o hash.
 - [x] Visualização estruturada somente leitura do conteúdo atual, com status de integridade SHA-256.
@@ -45,7 +47,7 @@
 
 ## Gates externos para beta público / 1.0
 
-O repositório público e o pré-release técnico `v0.1.0-dev.5` já existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
+O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.6` existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
 
 - [ ] Nome, marca, domínio e identificadores públicos verificados juridicamente.
 - [ ] Certificado de assinatura de código e chave de assinatura sob controle apropriado.

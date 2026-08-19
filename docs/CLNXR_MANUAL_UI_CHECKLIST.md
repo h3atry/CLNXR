@@ -4,7 +4,7 @@ Este roteiro é uma validação manual do build portátil. Não execute limpeza 
 
 ## Pré-condições
 
-- Extrair `artifacts\CLNXR-Portable-0.1.0-dev.5.zip`, abrir `CLNXR-Portable\CLNXR-Portable.exe` e conferir os hashes em `CLNXR-Portable\SHA256SUMS.txt`. O mesmo diretório contém `CLNXR.Cli.exe` para dry-run/JSON.
+- Extrair `artifacts\CLNXR-Portable-0.1.0-dev.6.zip`, abrir `CLNXR-Portable\CLNXR-Portable.exe` e conferir os hashes em `CLNXR-Portable\SHA256SUMS.txt`. O mesmo diretório contém `CLNXR.Cli.exe` para dry-run/JSON.
 - Registrar versão do Windows, resolução, escala do sistema e se o usuário tem alto contraste/movimento reduzido ativo.
 - Não estar em sessão de jogo ou outra atividade que não possa ser interrompida.
 - Não selecionar nem confirmar remoção de achados reais nesta validação.
