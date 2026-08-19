@@ -127,6 +127,13 @@ namespace Clnxr.Desktop
         public string RegistryLocation { get; set; }
     }
 
+    internal sealed class ToolOutputRow
+    {
+        public string Item { get; set; }
+        public string Value { get; set; }
+        public string Detail { get; set; }
+    }
+
     internal sealed class MainForm : Form
     {
         private static readonly Color Graphite = Color.FromArgb(22, 25, 31);
@@ -157,6 +164,11 @@ namespace Clnxr.Desktop
         private readonly Button disableStartupButton;
         private readonly Button disabledStartupButton;
         private readonly Button restoreStartupButton;
+        private readonly Button networkDiagnosticsButton;
+        private readonly Button flushDnsButton;
+        private readonly Button sfcVerifyButton;
+        private readonly Button dismCheckButton;
+        private readonly Button chkdskScanButton;
         private readonly Button viewReceiptButton;
         private readonly Button exportReceiptButton;
         private readonly Button customRuleButton;
@@ -328,6 +340,26 @@ namespace Clnxr.Desktop
             restoreStartupButton.Enabled = false;
             restoreStartupButton.Click += async delegate { await RestoreSelectedStartupAsync(); };
 
+            networkDiagnosticsButton = CreateActionButton("Diagnóstico de rede", Cyan, new Point(312, 116));
+            networkDiagnosticsButton.Visible = false;
+            networkDiagnosticsButton.Click += async delegate { await DiagnoseNetworkAsync(); };
+
+            flushDnsButton = CreateActionButton("Limpar DNS", Review, new Point(472, 116));
+            flushDnsButton.Visible = false;
+            flushDnsButton.Click += async delegate { await FlushDnsAsync(); };
+
+            sfcVerifyButton = CreateActionButton("SFC verificar", Cyan, new Point(580, 116));
+            sfcVerifyButton.Visible = false;
+            sfcVerifyButton.Click += async delegate { await RunSystemRepairAsync(SystemRepairService.SfcVerifyActionId, string.Empty, "SFC /verifyonly"); };
+
+            dismCheckButton = CreateActionButton("DISM CheckHealth", Cyan, new Point(700, 116));
+            dismCheckButton.Visible = false;
+            dismCheckButton.Click += async delegate { await RunSystemRepairAsync(SystemRepairService.DismCheckHealthActionId, string.Empty, "DISM /Online /Cleanup-Image /CheckHealth"); };
+
+            chkdskScanButton = CreateActionButton("CHKDSK /scan", Review, new Point(860, 116));
+            chkdskScanButton.Visible = false;
+            chkdskScanButton.Click += async delegate { await RunSystemRepairAsync(SystemRepairService.ChkdskScanActionId, SystemRepairVolume(), "CHKDSK " + SystemRepairVolume() + " /scan"); };
+
             viewReceiptButton = CreateActionButton("Ver recibo", Cyan, new Point(18, 40));
             viewReceiptButton.Visible = false;
             viewReceiptButton.Enabled = false;
@@ -372,6 +404,11 @@ namespace Clnxr.Desktop
             controls.Controls.Add(disableStartupButton);
             controls.Controls.Add(disabledStartupButton);
             controls.Controls.Add(restoreStartupButton);
+            controls.Controls.Add(networkDiagnosticsButton);
+            controls.Controls.Add(flushDnsButton);
+            controls.Controls.Add(sfcVerifyButton);
+            controls.Controls.Add(dismCheckButton);
+            controls.Controls.Add(chkdskScanButton);
             controls.Controls.Add(viewReceiptButton);
             controls.Controls.Add(exportReceiptButton);
             controls.Controls.Add(customRuleButton);
@@ -617,6 +654,11 @@ namespace Clnxr.Desktop
             disableStartupButton.Visible = toolToolbar;
             disabledStartupButton.Visible = toolToolbar;
             restoreStartupButton.Visible = toolToolbar;
+            networkDiagnosticsButton.Visible = toolToolbar;
+            flushDnsButton.Visible = toolToolbar;
+            sfcVerifyButton.Visible = toolToolbar;
+            dismCheckButton.Visible = toolToolbar;
+            chkdskScanButton.Visible = toolToolbar;
             UpdateStartupActions();
             viewReceiptButton.Visible = historyToolbar;
             exportReceiptButton.Visible = historyToolbar;
@@ -919,6 +961,8 @@ namespace Clnxr.Desktop
                 new ToolRow { Name = "Inspetor de arquivos bloqueados", Status = "Restart Manager somente leitura", Reason = "Consulta processos que mantêm um arquivo registrado; não encerra nem reinicia processos." },
                 new ToolRow { Name = "Resíduos de desinstalação", Status = "Inventário disponível", Reason = "Compara apenas InstallLocation declarado por entradas conhecidas; não adivinha chaves, não executa desinstaladores e não apaga Registro." },
                 new ToolRow { Name = "Limpeza segura agendada", Status = "Opt-in; perfil Seguro fixo", Reason = "Cria tarefa diária reversível via schtasks.exe somente após confirmação; argumentos não são editáveis e não há elevação automática." }
+                ,new ToolRow { Name = "Utilitários de rede", Status = "Diagnóstico + Flush DNS", Reason = "ipconfig.exe é chamado por caminho fixo; reset Winsock/TCP-IP fica apenas como plano manual por exigir elevação e reinicialização." }
+                ,new ToolRow { Name = "System Repair Hub", Status = "SFC/DISM/CHKDSK somente verificação", Reason = "Executa apenas /verifyonly, /CheckHealth e /scan após confirmação; não dispara /scannow, /RestoreHealth ou /f automaticamente." }
             };
             grid.DataSource = new BindingList<ToolRow>(rows);
             recycleEmptyButton.Enabled = recycleBin != null && recycleBin.Available && recycleBin.ItemCount > 0 && activeOperation == null;
@@ -1468,6 +1512,146 @@ namespace Clnxr.Desktop
                 activeOperation = null;
                 SetBusy(false, null);
             }
+        }
+
+        private async Task DiagnoseNetworkAsync()
+        {
+            if (activeOperation != null) return;
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Executando diagnóstico de rede somente leitura...", false);
+            try
+            {
+                NetworkDiagnosticResult result = await Task.Run(delegate { return application.DiagnoseNetwork(); });
+                ShowNetworkDiagnosticResult(result);
+            }
+            catch (Exception ex)
+            {
+                pageTitle.Text = "Diagnóstico de rede";
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha no diagnóstico de rede: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private async Task FlushDnsAsync()
+        {
+            if (activeOperation != null) return;
+            const string confirmation = "Limpar o cache DNS local agora?\r\n\r\n" +
+                "A ação usa somente ipconfig.exe /flushdns, não reinicia o computador e não altera arquivos pessoais. " +
+                "O resultado e o recibo local serão registrados.";
+            if (MessageBox.Show(this, confirmation, "Confirmar limpeza do DNS", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.Text = "Limpeza do DNS cancelada antes da alteração.";
+                return;
+            }
+
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Limpando o cache DNS local...", false);
+            try
+            {
+                ToolExecution result = await Task.Run(delegate { return application.ExecuteNetworkAction(NetworkUtilitiesService.FlushDnsActionId); });
+                ShowToolExecutionResult("Limpeza do DNS", result);
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao limpar DNS: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private async Task RunSystemRepairAsync(string actionId, string volume, string displayCommand)
+        {
+            if (activeOperation != null) return;
+            string confirmation = string.Format("Executar a verificação {0}?\r\n\r\n" +
+                "Esta versão usa somente uma verificação não destrutiva. Pode exigir uma janela elevada; o CLNXR não solicita elevação automática. " +
+                "A operação pode consumir CPU/disco e o recibo local guardará a saída.", displayCommand);
+            if (MessageBox.Show(this, confirmation, "Confirmar verificação do sistema", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                statusLabel.Text = "Verificação do sistema cancelada antes da execução.";
+                return;
+            }
+
+            activeOperation = new CancellationTokenSource();
+            SetBusy(true, "Executando verificação do sistema; o limite é de 120 segundos...", false);
+            try
+            {
+                ToolExecution result = await Task.Run(delegate { return application.ExecuteSystemRepair(actionId, volume); });
+                ShowToolExecutionResult("System Repair Hub", result);
+            }
+            catch (Exception ex)
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha na verificação do sistema: " + ex.Message;
+            }
+            finally
+            {
+                activeOperation.Dispose();
+                activeOperation = null;
+                SetBusy(false, null);
+            }
+        }
+
+        private void ShowNetworkDiagnosticResult(NetworkDiagnosticResult result)
+        {
+            pageTitle.Text = "Diagnóstico de rede";
+            pageDescription.Text = "Saída local de ipconfig.exe /all. Nenhuma conexão foi reiniciada e nada foi enviado para fora do computador.";
+            BuildSimpleColumns(new[]
+            {
+                new ColumnDefinition("Item", "Item", 180),
+                new ColumnDefinition("Value", "Valor", 180),
+                new ColumnDefinition("Detail", "Detalhe", 900)
+            });
+            List<ToolOutputRow> rows = new List<ToolOutputRow>
+            {
+                new ToolOutputRow { Item = "Status", Value = result.Succeeded ? "Concluído" : "Falhou", Detail = result.Message },
+                new ToolOutputRow { Item = "Comando fixo", Value = "ipconfig.exe /all", Detail = result.Command },
+                new ToolOutputRow { Item = "Saída", Value = "Capturada localmente", Detail = string.IsNullOrWhiteSpace(result.Output) ? "Nenhuma saída foi retornada." : result.Output }
+            };
+            foreach (string issue in result.Issues)
+                rows.Add(new ToolOutputRow { Item = "Aviso", Value = "Preservado", Detail = issue });
+            grid.DataSource = new BindingList<ToolOutputRow>(rows);
+            summaryLabel.Text = result.Succeeded ? "Diagnóstico concluído sem alterar a rede." : "Diagnóstico terminou com falha; confira os avisos preservados.";
+            statusLabel.ForeColor = result.Succeeded ? Cyan : Review;
+            statusLabel.Text = result.Message;
+        }
+
+        private void ShowToolExecutionResult(string title, ToolExecution result)
+        {
+            pageTitle.Text = title;
+            pageDescription.Text = "Resultado local da operação confirmada. O recibo foi salvo no histórico e contém o comando fixo e a saída limitada.";
+            BuildSimpleColumns(new[]
+            {
+                new ColumnDefinition("Item", "Item", 180),
+                new ColumnDefinition("Value", "Valor", 180),
+                new ColumnDefinition("Detail", "Detalhe", 900)
+            });
+            grid.DataSource = new BindingList<ToolOutputRow>(new List<ToolOutputRow>
+            {
+                new ToolOutputRow { Item = "Status", Value = result.Succeeded ? "Concluído" : "Falhou", Detail = result.Message },
+                new ToolOutputRow { Item = "Saída", Value = string.IsNullOrWhiteSpace(result.Output) ? "Nenhuma" : "Capturada", Detail = string.IsNullOrWhiteSpace(result.Output) ? "Nenhuma saída foi retornada." : result.Output },
+                new ToolOutputRow { Item = "Recibo", Value = "Salvo localmente", Detail = result.ReceiptPath }
+            });
+            summaryLabel.Text = result.Succeeded ? "Operação concluída; confira a saída e o recibo." : "Operação não concluída; nenhuma garantia de reparo deve ser inferida.";
+            statusLabel.ForeColor = result.Succeeded ? Success : Review;
+            statusLabel.Text = result.Message + " Recibo local: " + result.ReceiptPath;
+        }
+
+        private static string SystemRepairVolume()
+        {
+            string root = Path.GetPathRoot(Environment.SystemDirectory);
+            if (string.IsNullOrWhiteSpace(root)) return "C:";
+            return root.TrimEnd('\\');
         }
 
         private void ShowUninstallResidualResult(UninstallResidualResult result)
@@ -2213,6 +2397,11 @@ namespace Clnxr.Desktop
             disableStartupButton.Enabled = false;
             disabledStartupButton.Enabled = !busy;
             restoreStartupButton.Enabled = false;
+            networkDiagnosticsButton.Enabled = !busy;
+            flushDnsButton.Enabled = !busy;
+            sfcVerifyButton.Enabled = !busy;
+            dismCheckButton.Enabled = !busy;
+            chkdskScanButton.Enabled = !busy;
             customRuleButton.Enabled = !busy;
             deleteCustomRuleButton.Enabled = !busy && currentPage == DesktopPage.Rules && IsCustomRuleSelected();
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;

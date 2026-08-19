@@ -22,6 +22,8 @@ Esta auditoria descreve o estado verificável em 18 de agosto de 2026 em `D:\Pro
 | `StartupExplorerService` | Enumera HKCU/HKLM Run/RunOnce e pastas; permite apenas mutação HKCU com revalidação e backup reversível | Não executa comandos, não toca HKLM/pastas e não eleva automaticamente; restauração real ainda requer teste manual controlado. |
 | `UninstallResidualService` | Inventaria entradas conhecidas e marca somente `InstallLocation` declarado ausente | Não adivinha sobras, não remove Registro e não executa desinstaladores. |
 | `ScheduledCleanupService` | Constrói e executa comando fixo de `schtasks.exe` para perfil Seguro diário; remove a mesma tarefa | Contrato testado sem mutação; execução real depende de Task Scheduler/conta e confirmação manual. |
+| `NetworkUtilitiesService` | Catálogo fechado para diagnóstico, Flush DNS e planos manuais de reset | Não executa Winsock/TCP-IP automaticamente; sem shell arbitrário e sem elevação automática. |
+| `SystemRepairService` | Catálogo fechado de SFC/DISM/CHKDSK somente verificação, com saída limitada | Não dispara switches de reparo; execução depende de utilitários, privilégios e estado do Windows. |
 
 ## Comportamento já presente
 
@@ -34,6 +36,7 @@ Fatos observados no código:
 5. Ignora entradas marcadas como `ReparsePoint` durante a leitura e antes da exclusão recursiva.
 6. A limpeza calcula bytes liberados somente para arquivos removidos com sucesso e executa uma nova análise após o fluxo de limpeza.
 7. A página Ferramentas separa inventário de mutações: HKCU Run/RunOnce pode ser desabilitado com confirmação e desfazer; resíduos de desinstalação são somente candidatos; agendamento é opt-in, fixo e removível.
+8. As ferramentas P3 usam comandos absolutos do diretório do sistema, sem shell; saídas são limitadas e podem ser persistidas somente no recibo local após confirmação.
 
 ## Limites e riscos atuais
 

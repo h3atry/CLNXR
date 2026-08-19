@@ -31,6 +31,9 @@
 - [x] Interface provisória compilada expõe Explorador de inicialização com desabilitação/restauração reversível somente para `HKCU` Run/RunOnce, além do Inspetor de arquivos bloqueados somente leitura; `HKLM`, pastas, processos e comandos permanecem fora da mutação.
 - [x] Inventário de resíduos de desinstalação somente leitura baseado em `InstallLocation` declarado, sem remoção de Registro ou execução de desinstaladores.
 - [x] Agendamento opt-in do perfil Seguro com horário/argumentos fixos, sem elevação automática, recibo local e remoção explícita.
+- [x] Network Utilities com diagnóstico `/all`, Flush DNS confirmável e planos manuais explícitos para resets que exigem elevação/reinicialização.
+- [x] System Repair Hub com SFC `/verifyonly`, DISM `/CheckHealth` e CHKDSK `/scan`; switches destrutivos não são executados automaticamente.
+- [x] Contratos P3 cobertos no sandbox, incluindo catálogo fechado, volume validado, recusa de switches/caminhos arbitrários e não execução silenciosa de reset.
 - [ ] Teste visual e teste de desempenho das ferramentas P1 em volumes grandes.
 - [ ] Testes de integração por launcher/jogo/ambiente de desenvolvimento em VM antes de ampliar o catálogo.
 - [ ] Filtros e virtualização de resultados para catálogos grandes.

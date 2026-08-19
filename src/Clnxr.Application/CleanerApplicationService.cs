@@ -25,15 +25,22 @@ namespace Clnxr.Application
     public sealed class ToolExecution
     {
         public ToolExecution(bool succeeded, string message, MaintenanceReceipt receipt, string receiptPath)
+            : this(succeeded, message, string.Empty, receipt, receiptPath)
+        {
+        }
+
+        public ToolExecution(bool succeeded, string message, string output, MaintenanceReceipt receipt, string receiptPath)
         {
             Succeeded = succeeded;
             Message = message ?? string.Empty;
+            Output = output ?? string.Empty;
             Receipt = receipt;
             ReceiptPath = receiptPath ?? string.Empty;
         }
 
         public bool Succeeded { get; private set; }
         public string Message { get; private set; }
+        public string Output { get; private set; }
         public MaintenanceReceipt Receipt { get; private set; }
         public string ReceiptPath { get; private set; }
     }
@@ -52,6 +59,8 @@ namespace Clnxr.Application
         private readonly LockedFileInspectorService lockedFileInspectorService;
         private readonly UninstallResidualService uninstallResidualService;
         private readonly ScheduledCleanupService scheduledCleanupService;
+        private readonly NetworkUtilitiesService networkUtilitiesService;
+        private readonly SystemRepairService systemRepairService;
 
         public CleanerApplicationService()
             : this(new PathSafetyPolicy(), new WindowsProcessInspector(), ReceiptStore.CreateDefault(), new RecycleBinService(), new StorageSenseLauncher(), new StorageAnalysisService())
@@ -94,6 +103,8 @@ namespace Clnxr.Application
             lockedFileInspectorService = new LockedFileInspectorService();
             uninstallResidualService = new UninstallResidualService();
             scheduledCleanupService = new ScheduledCleanupService();
+            networkUtilitiesService = new NetworkUtilitiesService();
+            systemRepairService = new SystemRepairService();
         }
 
         public ScanSession Analyze(ScanProfile profile, CancellationToken cancellationToken, Action<string> progress)
@@ -263,6 +274,61 @@ namespace Clnxr.Application
             receipt.Message = result.Message;
             string receiptPath = receiptStore.SaveMaintenance(receipt);
             return new ToolExecution(result.Succeeded, result.Message, receipt, receiptPath);
+        }
+
+        public IList<NetworkActionPlan> ListNetworkPlans()
+        {
+            return networkUtilitiesService.ListPlans();
+        }
+
+        public NetworkDiagnosticResult DiagnoseNetwork()
+        {
+            return networkUtilitiesService.Diagnose();
+        }
+
+        public ToolExecution ExecuteNetworkAction(string actionId)
+        {
+            NetworkActionPlan plan = networkUtilitiesService.BuildPlan(actionId);
+            NetworkActionResult result = networkUtilitiesService.Execute(plan);
+            MaintenanceReceipt receipt = new MaintenanceReceipt("network-" + plan.ActionId + "-v1", 0, 0);
+            receipt.CompletedUtc = DateTime.UtcNow;
+            receipt.Status = result.Succeeded ? ToolActionStatus.Succeeded : ToolActionStatus.Failed;
+            receipt.Message = FormatToolMessage(result.Message, result.Command, result.Output, result.Issues);
+            string receiptPath = receiptStore.SaveMaintenance(receipt);
+            return new ToolExecution(result.Succeeded, result.Message, result.Output, receipt, receiptPath);
+        }
+
+        public IList<SystemRepairPlan> ListSystemRepairPlans()
+        {
+            return systemRepairService.ListPlans();
+        }
+
+        public ToolExecution ExecuteSystemRepair(string actionId, string volume)
+        {
+            SystemRepairPlan plan = systemRepairService.BuildPlan(actionId, volume);
+            SystemRepairResult result = systemRepairService.Execute(plan);
+            MaintenanceReceipt receipt = new MaintenanceReceipt("system-repair-" + plan.ActionId + "-v1", 0, 0);
+            receipt.CompletedUtc = DateTime.UtcNow;
+            receipt.Status = result.Succeeded ? ToolActionStatus.Succeeded : ToolActionStatus.Failed;
+            receipt.Message = FormatToolMessage(result.Message, result.Command, result.Output, result.Issues);
+            string receiptPath = receiptStore.SaveMaintenance(receipt);
+            return new ToolExecution(result.Succeeded, result.Message, result.Output, receipt, receiptPath);
+        }
+
+        private static string FormatToolMessage(string message, string command, string output, IList<string> issues)
+        {
+            List<string> parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(message)) parts.Add(message);
+            if (!string.IsNullOrWhiteSpace(command)) parts.Add("Comando fixo: " + PathRedactor.Redact(command));
+            if (issues != null)
+            {
+                foreach (string issue in issues)
+                    if (!string.IsNullOrWhiteSpace(issue)) parts.Add("Aviso: " + PathRedactor.Redact(issue));
+            }
+            if (!string.IsNullOrWhiteSpace(output)) parts.Add("Saída:\r\n" + PathRedactor.Redact(output));
+            string result = string.Join("\r\n", parts.ToArray());
+            const int max = 16000;
+            return result.Length <= max ? result : result.Substring(0, max) + "\r\n[recibo truncado pelo limite local]";
         }
     }
 }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-dev.5 — 2026-08-18
+
+- Adiciona `NetworkUtilitiesService`: diagnóstico local com `ipconfig /all`, Flush DNS confirmável e planos manuais explícitos para Winsock/TCP-IP, sem shell arbitrário ou elevação automática.
+- Adiciona `SystemRepairService`: verificações confirmáveis e não destrutivas para SFC, DISM e CHKDSK; switches de reparo destrutivo não entram no catálogo.
+- Integra as ferramentas P3 à página Ferramentas, grava saída limitada em recibos locais e amplia os testes de segurança para 16 grupos.
+- Mantém a entrega como pré-release técnico; não foram fechados assinatura, VM limpa, teste visual, beta externo ou compatibilidade universal.
+
 ## 0.1.0-dev.4 — 2026-08-18
 
 - Adiciona inventário de resíduos de desinstalação baseado somente em `InstallLocation` declarado; não remove Registro nem executa desinstaladores.

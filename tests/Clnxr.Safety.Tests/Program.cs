@@ -31,10 +31,11 @@ namespace Clnxr.Safety.Tests
                 TestBrowserCacheRulesAndAge(fixtureRoot);
                 TestReadOnlyStorageTools(fixtureRoot);
                 TestP2ReadOnlyTools(fixtureRoot);
+                TestP3NetworkAndRepairContracts();
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 15 grupos de testes de seguranca, evidencia, catalogo declarativo, regras personalizadas e ferramentas somente leitura foram concluidos.");
+                Console.WriteLine("PASS: 16 grupos de testes de seguranca, evidencia, catalogo declarativo, ferramentas locais e contratos P3 foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -412,6 +413,44 @@ namespace Clnxr.Safety.Tests
             Expect(disabled != null, "A lista de backups reversíveis de inicialização precisa ser somente leitura.");
             StartupMutationResult denied = startupService.Disable(new StartupEntry("Teste", "Entrada", "comando", "fixture"));
             Expect(!denied.Succeeded, "Uma entrada sem origem de Registro suportada não pode ser desabilitada.");
+        }
+
+        private static void TestP3NetworkAndRepairContracts()
+        {
+            NetworkUtilitiesService network = new NetworkUtilitiesService();
+            IList<NetworkActionPlan> networkPlans = network.ListPlans();
+            Expect(networkPlans.Count == 4, "Catálogo de rede precisa expor diagnóstico, Flush DNS e os dois planos manuais de reset.");
+            NetworkActionPlan diagnostics = network.BuildPlan(NetworkUtilitiesService.DiagnosticsActionId);
+            NetworkActionPlan flushDns = network.BuildPlan(NetworkUtilitiesService.FlushDnsActionId);
+            NetworkActionPlan winsock = network.BuildPlan(NetworkUtilitiesService.WinsockResetActionId);
+            Expect(diagnostics.ReadOnly && diagnostics.Arguments == "/all" && diagnostics.ExecutablePath.EndsWith("ipconfig.exe", StringComparison.OrdinalIgnoreCase),
+                "Diagnóstico de rede precisa ser somente leitura e usar ipconfig.exe /all fixo.");
+            Expect(!flushDns.ReadOnly && flushDns.Arguments == "/flushdns" && !flushDns.RequiresElevation,
+                "Flush DNS precisa ficar limitado ao argumento fixo e não solicitar elevação automática.");
+            NetworkActionResult refusedReset = network.Execute(winsock);
+            Expect(!refusedReset.Succeeded && refusedReset.Message.IndexOf("plano manual", StringComparison.OrdinalIgnoreCase) >= 0,
+                "Reset Winsock não pode ser executado silenciosamente pelo catálogo local.");
+            bool networkRejected = false;
+            try { network.BuildPlan("cmd /c arbitrary"); }
+            catch (ArgumentException) { networkRejected = true; }
+            Expect(networkRejected, "Utilitário de rede precisa rejeitar ações fora do catálogo fechado.");
+
+            SystemRepairService repair = new SystemRepairService();
+            IList<SystemRepairPlan> repairPlans = repair.ListPlans();
+            Expect(repairPlans.Count == 3, "System Repair Hub precisa expor exatamente três verificações não destrutivas.");
+            SystemRepairPlan sfc = repair.BuildPlan(SystemRepairService.SfcVerifyActionId, string.Empty);
+            SystemRepairPlan dism = repair.BuildPlan(SystemRepairService.DismCheckHealthActionId, string.Empty);
+            SystemRepairPlan chkdsk = repair.BuildPlan(SystemRepairService.ChkdskScanActionId, "c:");
+            Expect(sfc.Arguments == "/verifyonly" && sfc.ReadOnly && sfc.RequiresElevation,
+                "SFC precisa usar somente /verifyonly e declarar a necessidade potencial de elevação.");
+            Expect(dism.Arguments == "/Online /Cleanup-Image /CheckHealth" && dism.ReadOnly,
+                "DISM precisa ficar limitado a /CheckHealth sem reparo automático.");
+            Expect(chkdsk.Arguments == "C: /scan" && chkdsk.ReadOnly && chkdsk.Arguments.IndexOf("/f", StringComparison.OrdinalIgnoreCase) < 0,
+                "CHKDSK precisa aceitar apenas volume validado e /scan, sem /f.");
+            bool volumeRejected = false;
+            try { repair.BuildPlan(SystemRepairService.ChkdskScanActionId, "C:\\Windows"); }
+            catch (ArgumentException) { volumeRejected = true; }
+            Expect(volumeRejected, "System Repair Hub precisa rejeitar caminho ou switch no campo de volume.");
         }
 
         private static void TestStorageAnalysisMidTreeCancellation(string fixtureRoot)
