@@ -43,12 +43,12 @@ Data da auditoria: 19 de agosto de 2026. Esta tabela é uma verificação de est
 | --- | --- | --- |
 | Bundle portátil | Presente | Artefato local com DLLs modulares; não prova segurança ou prontidão pública. |
 | ZIP portátil | Presente | Pacote local gerado; não substitui instalação/teste em máquina limpa. |
-| SHA-256 do executável | `21D79C5475F47906C2D9DD61621026521CD5665D585ED1CC29D7DCA9DDBCBD01` | Confere com o executável gráfico de `v0.1.0-dev.7`; não é assinatura Authenticode. |
-| SHA-256 do ZIP | `7018B2D44E881C11BEC79049960299078ADC38F3FA30070183345AFFC8076156` | ZIP `v0.1.0-dev.7` com 16 entradas; 15 hashes internos conferidos, CLI extraído em dry-run e contrato de grade virtualizada exercitado no smoke desktop. |
+| SHA-256 do executável | `8356EB35A84B1BD4D45FB59E7625C3A0AC7CE732C987A63B10A2EC97EBEE0B04` | Confere com o executável gráfico de `v0.1.0-dev.8`; não é assinatura Authenticode. |
+| SHA-256 do ZIP | `2C3ACED36B260CD25429FB7E5A4977F049ACCF1A1C1A51407C792E2E9AE7F715` | ZIP `v0.1.0-dev.8` com 16 entradas sob `CLNXR-Portable/`, 15 hashes internos conferidos, CLI extraído em `--help`/dry-run JSON e os quatro smokes executados. |
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
-| Estado Git | `v0.1.0-dev.7` publicado em `master`/`main` e release prévia do GitHub | Commit remoto verificado: `7b95765ff1443ecc2674ef14e1bdb70b32bb21df`; release `https://github.com/h3atry/CLNXR/releases/tag/v0.1.0-dev.7` com ZIP `sha256:7018b2d44e881c11bec79049960299078adc38f3fa30070183345affc8076156` e checksums `sha256:ddaca199c42b5091547f3e1d2817386b18483ef9e077dcace0c2070fbf768511`. O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
+| Estado Git | `v0.1.0-dev.8` publicado em `master` e release prévia do GitHub | Commit remoto verificado: `e4ab46d76a9cc88f7bc5f6844bcf46ed6693b619`; release `https://github.com/h3atry/CLNXR/releases/tag/v0.1.0-dev.8` com ZIP `sha256:2c3aced36b260cd25429fb7e5a4977f049accf1a1c1a51407c792e2e9ae7f715` e checksums `sha256:7f12de4586e3b2c2bde83d0c9e5326256ede491f442f140ab61ca7d3dbe0b17d`. O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
 
 ## Decisão de término honesta
 
