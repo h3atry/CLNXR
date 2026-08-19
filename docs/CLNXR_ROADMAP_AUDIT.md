@@ -47,7 +47,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
-| Estado Git | Limpo no commit `71b1545` | O baseline modular foi versionado e publicado; os binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`) permanecem ignorados fora do escopo público. |
+| Estado Git | Revisão publicada no `master`/`main` e tag `v0.1.0-dev.2` | O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
 
 ## Decisão de término honesta
 
