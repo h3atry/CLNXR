@@ -42,8 +42,8 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | --- | --- | --- |
 | Bundle portátil | Presente | Artefato local com DLLs modulares; não prova segurança ou prontidão pública. |
 | ZIP portátil | Presente | Pacote local gerado; não substitui instalação/teste em máquina limpa. |
-| SHA-256 do executável | `22CB9BF3B0D384AB96AAD4D7E99992A68CEBBED9E4F04871BE03DA4BEB7B32FE` | Confere com o executável gráfico de `v0.1.0-dev.4`; não é assinatura Authenticode. |
-| SHA-256 do ZIP | `B219A35475DB17372E48D0259BCE5C7E6367BFE507E99614263B213F6A60E6A6` | ZIP `v0.1.0-dev.4` com 16 entradas; 15 hashes internos conferidos e CLI extraído em dry-run sem vazamento do usuário. |
+| SHA-256 do executável | `66EE7F3ABD01B307CE2C2BA4DAC5800A23A2381D77441694716468DC4138FDE3` | Confere com o executável gráfico de `v0.1.0-dev.4`; não é assinatura Authenticode. |
+| SHA-256 do ZIP | `5512707B707AC672B8505ED3809D828B642F2E19D420389A292357BE5B0C6F08` | ZIP `v0.1.0-dev.4` com 16 entradas; 15 hashes internos conferidos e CLI extraído em dry-run sem vazamento do usuário. |
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |

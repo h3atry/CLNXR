@@ -12,8 +12,8 @@ Data: 18 de agosto de 2026. Escopo: `D:\Projects\limpador`.
 | Smoke `Clnxr.WindowsScan.Smoke` | Passou, somente leitura | O scanner Seguro completou neste Windows sem abrir a UI nem remover arquivos. |
 | Smoke `Clnxr.Desktop.Smoke` | Passou, não visual | A janela desktop foi construída e descartada em STA sem ser exibida e sem iniciar análise ou limpeza. |
 | Consulta da Lixeira | Passou, somente leitura | A API oficial do Windows respondeu à consulta global sem esvaziar a Lixeira; a referência observada foi 0 itens e 0 bytes. |
-| Build desktop/CLI | Passou com avisos de ambiente | O build físico gerou `src\Clnxr.Desktop\bin\Release\CLNXR-Portable.exe` e `src\Clnxr.Cli\bin\Release\CLNXR.Cli.exe`; o executável gráfico da revisão `v0.1.0-dev.4` tem SHA-256 `22CB9BF3B0D384AB96AAD4D7E99992A68CEBBED9E4F04871BE03DA4BEB7B32FE`. O processo ainda usa referências do GAC por ausência do targeting pack oficial e tem alerta de arquitetura MSIL/AMD64. |
-| Pacote portátil local | Gerado e conferido | ZIP `v0.1.0-dev.4` contém 16 entradas somente sob `CLNXR-Portable/`, 15 hashes internos sem divergência, e o CLI extraído concluiu dry-run JSON sem expor o nome do usuário. SHA-256 do ZIP: `B219A35475DB17372E48D0259BCE5C7E6367BFE507E99614263B213F6A60E6A6`. |
+| Build desktop/CLI | Passou com avisos de ambiente | O build físico gerou `src\Clnxr.Desktop\bin\Release\CLNXR-Portable.exe` e `src\Clnxr.Cli\bin\Release\CLNXR.Cli.exe`; o executável gráfico da revisão `v0.1.0-dev.4` tem SHA-256 `66EE7F3ABD01B307CE2C2BA4DAC5800A23A2381D77441694716468DC4138FDE3`. O processo ainda usa referências do GAC por ausência do targeting pack oficial e tem alerta de arquitetura MSIL/AMD64. |
+| Pacote portátil local | Gerado e conferido | ZIP `v0.1.0-dev.4` contém 16 entradas somente sob `CLNXR-Portable/`, 15 hashes internos sem divergência, e o CLI extraído concluiu dry-run JSON sem expor o nome do usuário. SHA-256 do ZIP: `5512707B707AC672B8505ED3809D828B642F2E19D420389A292357BE5B0C6F08`. |
 
 ## Observação do smoke test real
 
