@@ -32,10 +32,11 @@ namespace Clnxr.Safety.Tests
                 TestReadOnlyStorageTools(fixtureRoot);
                 TestP2ReadOnlyTools(fixtureRoot);
                 TestP3NetworkAndRepairContracts();
+                TestLocalPreferences(fixtureRoot);
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 16 grupos de testes de seguranca, evidencia, catalogo declarativo, ferramentas locais e contratos P3 foram concluidos.");
+                Console.WriteLine("PASS: 17 grupos de testes de seguranca, evidencia, catalogo declarativo, ferramentas locais, contratos P3 e preferencias foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -451,6 +452,33 @@ namespace Clnxr.Safety.Tests
             try { repair.BuildPlan(SystemRepairService.ChkdskScanActionId, "C:\\Windows"); }
             catch (ArgumentException) { volumeRejected = true; }
             Expect(volumeRejected, "System Repair Hub precisa rejeitar caminho ou switch no campo de volume.");
+        }
+
+        private static void TestLocalPreferences(string fixtureRoot)
+        {
+            string preferencesPath = Path.Combine(fixtureRoot, "preferences", "settings.ini");
+            UserPreferencesService service = new UserPreferencesService(preferencesPath);
+            UserPreferences defaults = service.CreateDefaults();
+            Expect(defaults.Language == "pt-BR" && defaults.Theme == "dark-graphite" && !defaults.UpdatesOptIn,
+                "Preferencias padrão precisam ser locais, em pt-BR, tema dark-graphite e sem atualização automática.");
+
+            defaults.ReducedMotion = true;
+            defaults.UpdatesOptIn = true;
+            string message;
+            Expect(service.Save(defaults, out message), "Preferencias válidas precisam ser persistidas.");
+            Expect(File.Exists(preferencesPath), "O arquivo de preferencias precisa ficar no caminho local informado.");
+
+            UserPreferences loaded = service.Load();
+            Expect(loaded.ReducedMotion && loaded.UpdatesOptIn && loaded.Language == "pt-BR" && loaded.Theme == "dark-graphite",
+                "Preferencias persistidas precisam sobreviver ao carregamento.");
+
+            File.WriteAllText(preferencesPath, "language=../../outside\r\ntheme=dark-graphite\r\nreduced_motion=false\r\nupdates_opt_in=false\r\n");
+            UserPreferences sanitized = service.Load();
+            Expect(sanitized.Language == "pt-BR", "Valor de idioma com caracteres de caminho precisa ser ignorado.");
+
+            UserPreferences invalid = service.CreateDefaults();
+            invalid.Theme = "dark/unsafe";
+            Expect(!service.Save(invalid, out message), "Preferencias com token de tema fora do formato precisam ser rejeitadas.");
         }
 
         private static void TestStorageAnalysisMidTreeCancellation(string fixtureRoot)

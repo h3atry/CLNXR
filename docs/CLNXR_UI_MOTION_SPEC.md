@@ -51,7 +51,6 @@
 
 - Meta: manter a janela responsiva; medição, hash, scan e limpeza não rodam no thread de UI.
 - Todo trabalho longo recebe token de cancelamento e atualizações limitadas para não saturar a interface.
-- O modo de movimento reduzido remove transições não essenciais.
-- Tabelas grandes devem virtualizar linhas; não carregar objetos visuais por arquivo encontrado.
+- O modo de movimento reduzido remove transições não essenciais e é inicializado pela preferência de animação do Windows; a escolha pode ser salva localmente.
+- A página de resultados usa `DataGridView.VirtualMode` para virtualizar linhas; não carrega objetos visuais por arquivo encontrado.
 - Animações de estado devem permanecer curtas e nunca atrasar a confirmação de uma ação.
-

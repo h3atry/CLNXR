@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-dev.6 — 2026-08-19
+
+- Resultados passam a usar `DataGridView.VirtualMode`, mantendo filtros e seleção explícita sem criar um widget por achado.
+- Configurações passam a persistir apenas preferências locais de movimento reduzido, idioma/tema fixos e opt-in de atualização; nenhum segredo, caminho pessoal ou telemetria é salvo.
+- O modo de movimento reduzido é inicializado a partir da preferência do Windows e pode ser salvo/retornado ao padrão pela interface.
+- Smoke da janela verifica o contrato de grade virtualizada e o sandbox passa a cobrir persistência e sanitização de preferências.
+- Mantém a entrega como pré-release técnico; faltam validação visual, benchmark de 60 FPS, SDK/targeting pack fixado, assinatura, VM limpa e beta externo.
+
 ## 0.1.0-dev.5 — 2026-08-18
 
 - Adiciona `NetworkUtilitiesService`: diagnóstico local com `ipconfig /all`, Flush DNS confirmável e planos manuais explícitos para Winsock/TCP-IP, sem shell arbitrário ou elevação automática.

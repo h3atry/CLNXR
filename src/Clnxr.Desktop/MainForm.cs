@@ -173,6 +173,10 @@ namespace Clnxr.Desktop
         private readonly Button exportReceiptButton;
         private readonly Button customRuleButton;
         private readonly Button deleteCustomRuleButton;
+        private readonly CheckBox reducedMotionCheckBox;
+        private readonly Button saveSettingsButton;
+        private readonly Button resetSettingsButton;
+        private readonly Label protectedDataLabel;
         private readonly DataGridView grid;
         private readonly Label pageTitle;
         private readonly Label pageDescription;
@@ -184,6 +188,8 @@ namespace Clnxr.Desktop
         private readonly CheckBox resultSelectedOnly;
         private readonly Dictionary<DesktopPage, Button> navigation;
         private readonly HashSet<string> personalizedRuleIds;
+        private readonly UserPreferencesService preferencesService;
+        private UserPreferences preferences;
         private BindingList<FindingRow> allFindingRows;
         private BindingList<FindingRow> findingRows;
         private ScanSession currentSession;
@@ -196,12 +202,15 @@ namespace Clnxr.Desktop
         private readonly object storageProgressLock = new object();
         private DateTime lastStorageProgressUtc;
         private bool showingDisabledStartup;
+        private bool findingsVirtualMode;
 
         public MainForm()
         {
             application = new CleanerApplicationService();
             navigation = new Dictionary<DesktopPage, Button>();
             personalizedRuleIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            preferencesService = new UserPreferencesService();
+            preferences = preferencesService.Load();
 
             Text = "CLNXR (nome provisório)";
             AccessibleName = "CLNXR Portable Windows Cleaner";
@@ -379,11 +388,28 @@ namespace Clnxr.Desktop
             deleteCustomRuleButton.Enabled = false;
             deleteCustomRuleButton.Click += delegate { DeleteSelectedCustomRule(); };
 
-            Label protectedData = new Label();
-            protectedData.Text = "Proteção fixa: navegadores, logins, cookies, Downloads, saves e arquivos pessoais ficam fora do catálogo.";
-            protectedData.AutoSize = true;
-            protectedData.ForeColor = TextMuted;
-            protectedData.Location = new Point(18, 160);
+            reducedMotionCheckBox = new CheckBox();
+            reducedMotionCheckBox.Text = "Movimento reduzido (sem transições e loops)";
+            reducedMotionCheckBox.AutoSize = true;
+            reducedMotionCheckBox.ForeColor = Color.White;
+            reducedMotionCheckBox.Location = new Point(18, 42);
+            reducedMotionCheckBox.Visible = false;
+            reducedMotionCheckBox.AccessibleName = "Movimento reduzido";
+            reducedMotionCheckBox.Checked = preferences.ReducedMotion;
+
+            saveSettingsButton = CreateActionButton("Salvar configurações", Success, new Point(18, 82));
+            saveSettingsButton.Visible = false;
+            saveSettingsButton.Click += delegate { SaveSettings(); };
+
+            resetSettingsButton = CreateActionButton("Usar padrão do Windows", Cyan, new Point(180, 82));
+            resetSettingsButton.Visible = false;
+            resetSettingsButton.Click += delegate { ResetSettings(); };
+
+            protectedDataLabel = new Label();
+            protectedDataLabel.Text = "Proteção fixa: navegadores, logins, cookies, Downloads, saves e arquivos pessoais ficam fora do catálogo.";
+            protectedDataLabel.AutoSize = true;
+            protectedDataLabel.ForeColor = TextMuted;
+            protectedDataLabel.Location = new Point(18, 160);
 
             controls.Controls.Add(profileLabel);
             controls.Controls.Add(profileBox);
@@ -413,7 +439,10 @@ namespace Clnxr.Desktop
             controls.Controls.Add(exportReceiptButton);
             controls.Controls.Add(customRuleButton);
             controls.Controls.Add(deleteCustomRuleButton);
-            controls.Controls.Add(protectedData);
+            controls.Controls.Add(reducedMotionCheckBox);
+            controls.Controls.Add(saveSettingsButton);
+            controls.Controls.Add(resetSettingsButton);
+            controls.Controls.Add(protectedDataLabel);
 
             resultsFilterPanel = new Panel();
             resultsFilterPanel.Dock = DockStyle.Top;
@@ -476,6 +505,20 @@ namespace Clnxr.Desktop
                     deleteCustomRuleButton.Enabled = IsCustomRuleSelected();
                 if (currentPage == DesktopPage.Tools)
                     UpdateStartupActions();
+            };
+            grid.CellValueNeeded += delegate(object sender, DataGridViewCellValueEventArgs args)
+            {
+                if (!findingsVirtualMode || findingRows == null || args.RowIndex < 0 || args.RowIndex >= findingRows.Count)
+                    return;
+                args.Value = FindingCellValue(findingRows[args.RowIndex], args.ColumnIndex);
+            };
+            grid.CellValuePushed += delegate(object sender, DataGridViewCellValueEventArgs args)
+            {
+                if (!findingsVirtualMode || findingRows == null || args.RowIndex < 0 || args.RowIndex >= findingRows.Count || args.ColumnIndex != 0)
+                    return;
+                FindingRow row = findingRows[args.RowIndex];
+                row.Selected = args.Value != null && Convert.ToBoolean(args.Value);
+                BeginInvoke((MethodInvoker)delegate { ApplyFindingFilter(); });
             };
 
             Panel footer = new Panel();
@@ -635,11 +678,12 @@ namespace Clnxr.Desktop
             bool toolToolbar = page == DesktopPage.Tools;
             bool historyToolbar = page == DesktopPage.History;
             bool rulesToolbar = page == DesktopPage.Rules;
+            bool settingsToolbar = page == DesktopPage.Settings;
             resultsFilterPanel.Visible = page == DesktopPage.Results;
-            profileLabel.Visible = !toolToolbar && !historyToolbar;
-            profileBox.Visible = !toolToolbar && !historyToolbar;
-            analyzeButton.Visible = !toolToolbar && !historyToolbar;
-            cleanButton.Visible = !toolToolbar && !historyToolbar;
+            profileLabel.Visible = !toolToolbar && !historyToolbar && !settingsToolbar;
+            profileBox.Visible = !toolToolbar && !historyToolbar && !settingsToolbar;
+            analyzeButton.Visible = !toolToolbar && !historyToolbar && !settingsToolbar;
+            cleanButton.Visible = !toolToolbar && !historyToolbar && !settingsToolbar;
             recycleQueryButton.Visible = toolToolbar;
             recycleEmptyButton.Visible = toolToolbar;
             storageSenseButton.Visible = toolToolbar;
@@ -665,6 +709,10 @@ namespace Clnxr.Desktop
             customRuleButton.Visible = rulesToolbar;
             deleteCustomRuleButton.Visible = rulesToolbar;
             deleteCustomRuleButton.Enabled = rulesToolbar && IsCustomRuleSelected();
+            reducedMotionCheckBox.Visible = settingsToolbar;
+            saveSettingsButton.Visible = settingsToolbar;
+            resetSettingsButton.Visible = settingsToolbar;
+            protectedDataLabel.Visible = !settingsToolbar;
             foreach (KeyValuePair<DesktopPage, Button> pair in navigation)
             {
                 bool active = pair.Key == page;
@@ -988,12 +1036,43 @@ namespace Clnxr.Desktop
             {
                 new SettingRow { Setting = "Telemetria", Value = "Desligada", Detail = "Nenhuma telemetria foi implementada." },
                 new SettingRow { Setting = "Recibos", Value = "Locais", Detail = "LocalAppData\\CLNXR\\Receipts" },
-                new SettingRow { Setting = "Movimento reduzido", Value = "Padrão estático", Detail = "Esta interface não usa animações que atrasem ações." },
+                new SettingRow { Setting = "Idioma", Value = preferences.Language, Detail = "A tradução disponível nesta build é pt-BR; não há fallback remoto." },
+                new SettingRow { Setting = "Tema", Value = preferences.Theme, Detail = "Tema dark-graphite fixo no protótipo; troca não altera as proteções." },
+                new SettingRow { Setting = "Movimento reduzido", Value = preferences.ReducedMotion ? "Ativado" : "Desativado", Detail = "A preferência é local; sem transformações ou loops quando ativada." },
+                new SettingRow { Setting = "Resultados", Value = "Grade virtualizada", Detail = "A página de resultados cria apenas as linhas visíveis, sem um widget por arquivo." },
+                new SettingRow { Setting = "Atualizações", Value = preferences.UpdatesOptIn ? "Opt-in manual" : "Desativadas", Detail = "Nenhum download automático ou telemetria está implementado." },
                 new SettingRow { Setting = "Privilégios", Value = "Sem elevação automática", Detail = "Itens sem acesso são pulados e registrados." }
             });
+            reducedMotionCheckBox.Checked = preferences.ReducedMotion;
             cleanButton.Enabled = false;
-            summaryLabel.Text = "As proteções de caminho não podem ser desativadas pela interface.";
-            statusLabel.Text = "Configurações avançadas de regras ainda não são expostas.";
+            summaryLabel.Text = "Preferências são locais e não reduzem as proteções permanentes.";
+            statusLabel.Text = "Movimento reduzido detectado: " + (preferences.ReducedMotion ? "ativado" : "desativado") + ". Salve para persistir sua escolha.";
+        }
+
+        private void SaveSettings()
+        {
+            if (preferences == null) preferences = preferencesService.CreateDefaults();
+            preferences.ReducedMotion = reducedMotionCheckBox.Checked;
+            string message;
+            if (!preferencesService.Save(preferences, out message))
+            {
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = message;
+                return;
+            }
+
+            statusLabel.ForeColor = Success;
+            ShowSettings();
+            statusLabel.ForeColor = Success;
+            statusLabel.Text = message;
+        }
+
+        private void ResetSettings()
+        {
+            preferences = preferencesService.CreateDefaults();
+            reducedMotionCheckBox.Checked = preferences.ReducedMotion;
+            statusLabel.ForeColor = Review;
+            statusLabel.Text = "Padrão do Windows carregado na tela; clique em Salvar configurações para persistir.";
         }
 
         private async Task QueryRecycleBinAsync()
@@ -2266,7 +2345,10 @@ namespace Clnxr.Desktop
 
         private void BuildFindingsColumns()
         {
+            findingsVirtualMode = false;
+            grid.VirtualMode = false;
             grid.DataSource = null;
+            grid.RowCount = 0;
             grid.Columns.Clear();
             grid.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "Selected", HeaderText = "Limpar", Width = 58 });
             grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = "Risk", HeaderText = "Risco", Width = 88 });
@@ -2282,7 +2364,10 @@ namespace Clnxr.Desktop
 
         private void BuildSimpleColumns(IEnumerable<ColumnDefinition> definitions)
         {
+            findingsVirtualMode = false;
+            grid.VirtualMode = false;
             grid.DataSource = null;
+            grid.RowCount = 0;
             grid.Columns.Clear();
             foreach (ColumnDefinition definition in definitions)
             {
@@ -2301,7 +2386,7 @@ namespace Clnxr.Desktop
             {
                 allFindingRows = new BindingList<FindingRow>();
                 findingRows = new BindingList<FindingRow>();
-                grid.DataSource = findingRows;
+                BindVirtualFindingRows();
                 summaryLabel.Text = "Nenhuma análise em andamento. Escolha um perfil e analise as unidades.";
                 statusLabel.ForeColor = Cyan;
                 statusLabel.Text = "Nenhum arquivo foi removido.";
@@ -2337,11 +2422,42 @@ namespace Clnxr.Desktop
                 (query.Length == 0 || ContainsIgnoreCase(row.Category, query) || ContainsIgnoreCase(row.RuleId, query) || ContainsIgnoreCase(row.Path, query) || ContainsIgnoreCase(row.Explanation, query)));
 
             findingRows = new BindingList<FindingRow>(filtered.ToList());
-            if (grid != null) grid.DataSource = findingRows;
+            BindVirtualFindingRows();
             if (currentPage == DesktopPage.Results && statusLabel != null)
             {
                 int selected = allFindingRows.Count(row => row.Selected);
                 statusLabel.Text = string.Format("Exibindo {0:N0} de {1:N0} resultado(s); {2:N0} selecionado(s). Clique duas vezes para ver detalhes.", findingRows.Count, allFindingRows.Count, selected);
+            }
+        }
+
+        private void BindVirtualFindingRows()
+        {
+            if (grid == null) return;
+            findingsVirtualMode = false;
+            grid.DataSource = null;
+            grid.RowCount = 0;
+            findingsVirtualMode = true;
+            grid.VirtualMode = true;
+            grid.RowCount = findingRows == null ? 0 : findingRows.Count;
+            grid.Invalidate();
+        }
+
+        private static object FindingCellValue(FindingRow row, int columnIndex)
+        {
+            if (row == null) return null;
+            switch (columnIndex)
+            {
+                case 0: return row.Selected;
+                case 1: return row.Risk;
+                case 2: return row.Category;
+                case 3: return row.Explanation;
+                case 4: return row.RequiredProcesses;
+                case 5: return row.Files;
+                case 6: return row.EstimatedSize;
+                case 7: return row.Volume;
+                case 8: return row.RuleId;
+                case 9: return row.Path;
+                default: return null;
             }
         }
 
@@ -2404,6 +2520,9 @@ namespace Clnxr.Desktop
             chkdskScanButton.Enabled = !busy;
             customRuleButton.Enabled = !busy;
             deleteCustomRuleButton.Enabled = !busy && currentPage == DesktopPage.Rules && IsCustomRuleSelected();
+            reducedMotionCheckBox.Enabled = !busy;
+            saveSettingsButton.Enabled = !busy;
+            resetSettingsButton.Enabled = !busy;
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
             if (!string.IsNullOrEmpty(message))
             {

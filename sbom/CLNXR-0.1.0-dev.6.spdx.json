@@ -1,0 +1,49 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "CLNXR-0.1.0-dev.6",
+  "documentNamespace": "https://local.clnxr.invalid/spdx/CLNXR-0.1.0-dev.6-20260819",
+  "creationInfo": {
+    "created": "2026-08-19T00:00:00Z",
+    "creators": [
+      "Tool: Microsoft .NET Framework C# Compiler 4.8.9221.0"
+    ]
+  },
+  "packages": [
+    {
+      "name": "CLNXR",
+      "SPDXID": "SPDXRef-Package-CLNXR",
+      "versionInfo": "0.1.0-dev.6",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "supplier": "Organization: Askoryx (nome de trabalho; nao verificado para publicacao)"
+    },
+    {
+      "name": "Microsoft .NET Framework",
+      "SPDXID": "SPDXRef-Package-DotNetFramework",
+      "versionInfo": "4.x runtime requerido pelo build atual",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION",
+      "supplier": "Organization: Microsoft"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-CLNXR"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-CLNXR",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-DotNetFramework"
+    }
+  ]
+}
