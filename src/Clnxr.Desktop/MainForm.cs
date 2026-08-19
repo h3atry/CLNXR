@@ -213,10 +213,11 @@ namespace Clnxr.Desktop
             preferencesService = new UserPreferencesService();
             preferences = preferencesService.Load();
 
-            Text = "CLNXR (nome provisório)";
+            Text = "CLNXR";
             AccessibleName = "CLNXR Portable Windows Cleaner";
             AccessibleRole = AccessibleRole.Window;
             StartPosition = FormStartPosition.CenterScreen;
+            KeyPreview = true;
             MinimumSize = new Size(1040, 660);
             Size = new Size(1260, 780);
             BackColor = Graphite;
@@ -581,17 +582,8 @@ namespace Clnxr.Desktop
             status.ForeColor = TextMuted;
             status.Location = new Point(143, 29);
 
-            Label workingName = new Label();
-            workingName.Text = "Nome de trabalho — marca pública pendente de validação";
-            workingName.AutoSize = true;
-            workingName.ForeColor = TextMuted;
-            workingName.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            workingName.Location = new Point(760, 29);
-            header.Resize += delegate { workingName.Left = Math.Max(540, header.ClientSize.Width - workingName.Width - 24); };
-
             header.Controls.Add(brand);
             header.Controls.Add(status);
-            header.Controls.Add(workingName);
             return header;
         }
 

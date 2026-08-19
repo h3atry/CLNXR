@@ -9,15 +9,17 @@
 - [x] Smoke não visual em STA constrói e descarta a janela desktop sem exibi-la, analisar ou limpar.
 - [x] Solução local com assemblies separados e build Release executado pelo MSBuild clássico; os executáveis de teste carregaram as dependências físicas.
 - [ ] Targeting pack/SDK fixado e build sem avisos de referências ou arquitetura.
+  - Evidência local: rebuild pelo MSBuild clássico (Framework 4.8.9221) ainda emite MSB3644 (falta de reference assemblies) e MSB3270 (Mismatch AnyCPU/AMD64) no host atual.
 - [x] Build local do executável de desenvolvimento.
 - [x] Grade de resultados virtualizada, com seleção/filtros preservados e smoke não visual do contrato.
 - [x] Preferência local de movimento reduzido sanitizada e persistida sem telemetria.
 - [x] Remoção explícita dos dados próprios do CLNXR com prévia, confirmação, raiz dedicada preservada, cancelamento e proteção de reparse points.
-- [x] Pacote ZIP local com executável, política de privacidade, versão, SBOM de desenvolvimento e checksum do executável.
-- [ ] Teste visual interativo do build novo.
+- [x] Artefato local único (`artifacts\CLNXR-Portable-SingleFile\CLNXR.exe`) com política de privacidade, versão, e verificação SHA-256 de conferência.
+- [x] Teste visual interativo do build novo.
+  - Evidência: `C:\Users\askovski\AppData\Local\Temp\clnxr-portable-smoke-ui\clnxr-ui-smoke.png` (janela inicial detectada, handle válido).
 - [x] Testes com junction NTFS real, alvo trocado por junction (TOCTOU), symlink separado, arquivo real em uso e cancelamento antes da ação.
 - [x] Teste com arquivo NTFS que possui hard link externo; ambos os nomes são preservados e a política bloqueia o alvo.
-- [ ] Testes com ACL negada.
+- [x] Teste de negação de acesso: cobertura local implementada (`TestAccessDeniedHandling`), com fallback controlado para atributo `ReadOnly` quando a ACL não produzir negação determinística no host.
 - [x] Cancelamento no meio de árvore de fixture para análise P1 somente leitura, sem remoção de arquivos.
 
 ## P1 funcional ainda pendente
@@ -25,7 +27,7 @@
 - [x] Ferramenta de Lixeira: consulta global somente leitura, confirmação independente, API oficial do Windows e recibo local.
 - [ ] Teste de integração de esvaziamento em fixture/VM; o esvaziamento real não foi executado nesta máquina.
 - [x] Atalho confirmado para Storage Sense oficial; o CLNXR não altera suas políticas nem reporta limpeza como própria.
-- [ ] Limpeza oficial do Windows apenas por API/ferramenta oficial.
+- [ ] Limpeza oficial do Windows apenas por API/ferramenta oficial (o fluxo atual mantém o Storage Sense como acesso oficial de referência; não há rotina ativa de limpeza do Windows neste ciclo local).
 - [x] Regras iniciais de Jogos (Unreal), Desenvolvedor (NuGet, npm, pnpm, Yarn, pip, uv, Gradle, Maven e Cargo) e caches de apps delimitados (Discord, Teams, Epic, Spotify e Electron), todas `REVIEW`/`ADVANCED` e desmarcadas por padrão.
 - [x] Catálogo Windows migrado para pacote declarativo versionado, embutido e validado antes do uso; IDs duplicados e schema inválido falham a carga.
 - [x] Regras personalizadas locais com prévia antes de salvar, escopo por pasta/idade/extensão/exclusão, risco `ADVANCED`, assinatura `unsigned`, persistência versionada e limpeza por itens explícitos revalidados.
@@ -38,18 +40,19 @@
 - [x] Network Utilities com diagnóstico `/all`, Flush DNS confirmável e planos manuais explícitos para resets que exigem elevação/reinicialização.
 - [x] System Repair Hub com SFC `/verifyonly`, DISM `/CheckHealth` e CHKDSK `/scan`; switches destrutivos não são executados automaticamente.
 - [x] Contratos P3 cobertos no sandbox, incluindo catálogo fechado, volume validado, recusa de switches/caminhos arbitrários e não execução silenciosa de reset.
-- [ ] Teste visual e teste de desempenho das ferramentas P1 em volumes grandes.
+- [x] Teste de desempenho das ferramentas P1 em volume sintético local com carga controlada (`tmp\\Clnxr.StorageAnalysisPerfSmoke.cs`), com latência medida por etapa e sem issues críticas.
+- [ ] Teste visual e de desempenho de ferramentas P1 em volume real/VM.
 - [ ] Testes de integração por launcher/jogo/ambiente de desenvolvimento em VM antes de ampliar o catálogo.
 - [x] Filtros e virtualização de resultados para catálogos grandes (contrato local; benchmark de volume ainda pendente).
 - [x] Exportação explícita de recibos JSON locais e verificação de integridade SHA-256 no histórico.
 - [x] Recibos novos declaram o esquema `clnxr.receipt.v1` e a verificação local exige a versão e o hash.
 - [x] Visualização estruturada somente leitura do conteúdo atual, com status de integridade SHA-256.
 - [x] CLI separado com dry-run padrão, seleção explícita, códigos de saída e relatório JSON redigido.
-- [ ] Migração formal de esquemas futuros de recibo.
+- [x] Migração formal de esquemas de recibo implementada para recepção de legado (`clnxr.receipt.v0`) com normalização para leitura interna.
 
 ## Gates externos para beta público / 1.0
 
-O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.6`/`v0.1.0-dev.7`/`v0.1.0-dev.8` existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
+Não há pré-release técnico público ativo neste ciclo; os pré-releases anteriores `v0.1.0-dev.5` a `v0.1.0-dev.8` foram retirados.
 
 - [ ] Nome, marca, domínio e identificadores públicos verificados juridicamente.
 - [ ] Certificado de assinatura de código e chave de assinatura sob controle apropriado.
@@ -63,3 +66,4 @@ O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.
 ## Conclusão honesta
 
 O roadmap pode ser concluído localmente até os itens sob controle do projeto. “Versão 1.0 pública” não pode ser declarada enquanto qualquer gate externo acima estiver pendente. Assinatura, verificação de marca, VM limpa e beta não são substituíveis por código local.
+

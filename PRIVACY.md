@@ -1,4 +1,4 @@
-# Privacidade — CLNXR (nome de trabalho)
+# Privacidade — CLNXR
 
 ## Regra padrão
 
@@ -17,4 +17,3 @@ O catálogo não inclui cookies, credenciais, logins, histórico, sessões de na
 ## Limite desta política
 
 Esta é uma política de desenvolvimento do projeto; não substitui revisão jurídica nem uma política pública aprovada para lançamento.
-

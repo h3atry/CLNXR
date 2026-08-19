@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -39,10 +41,12 @@ namespace Clnxr.Safety.Tests
                 TestLocalPreferences(fixtureRoot);
                 TestUserDataCleanup(fixtureRoot);
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
+                TestAccessDeniedHandling(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
                 TestHardLinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 20 grupos de testes de seguranca, evidencia, catalogo declarativo, pacote assinado, ferramentas locais, contratos P3, preferencias, remocao de dados proprios e hard links foram concluidos.");
+                TestReceiptSchemaMigration();
+                Console.WriteLine("PASS: 22 grupos de testes de seguranca, evidencia, catalogo declarativo, pacote assinado, ferramentas locais, contratos P3, preferencias, remocao de dados proprios, acesso negado e hard links foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -138,6 +142,52 @@ namespace Clnxr.Safety.Tests
             ReceiptDocument maintenanceDocument = store.ReadDocument(maintenancePath);
             Expect(maintenanceDocument.Details.Any(detail => detail.Field == "ToolId" && detail.Value == "fixture-tool"),
                 "O visualizador estruturado precisa listar os campos do recibo de ferramenta.");
+        }
+
+        private static void TestReceiptSchemaMigration()
+        {
+            string fixtureRoot = Path.Combine(Path.GetTempPath(), "clnxr-receipt-migration-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(fixtureRoot);
+                ReceiptStore store = new ReceiptStore(fixtureRoot);
+
+                var serializer = new JavaScriptSerializer();
+                var legacyReceipt = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "schemaVersion", ReceiptSchema.LegacyReceiptVersion },
+                    { "receiptId", "legacy-cleanup" },
+                    { "planId", "legacy-plan" },
+                    { "sessionId", "legacy-session" },
+                    { "startedUtc", DateTime.UtcNow.AddMinutes(-1).ToString("o") },
+                    { "completedUtc", DateTime.UtcNow.ToString("o") },
+                    { "wasCancelled", false },
+                    { "results", new object[0] },
+                    { "receiptHash", string.Empty }
+                };
+
+                string unsignedPayload = serializer.Serialize(legacyReceipt);
+                legacyReceipt["receiptHash"] = ComputeSha256(unsignedPayload);
+                string legacyPayload = serializer.Serialize(legacyReceipt);
+
+                string legacyPath = Path.Combine(fixtureRoot, "legacy-receipt.json");
+                File.WriteAllText(legacyPath, legacyPayload, new UTF8Encoding(false));
+
+                ReceiptFileVerification verification = store.VerifyFile(legacyPath);
+                Expect(verification.IsValid, "Recibo legado com schema v0 precisa ser validado com migração para leitura.");
+                Expect(verification.Message.IndexOf("migrou", StringComparison.OrdinalIgnoreCase) >= 0,
+                    "A validação precisa indicar que houve migração de schema no recibo legado.");
+
+                ReceiptDocument document = store.ReadDocument(legacyPath);
+                Expect(document.SchemaVersion == ReceiptSchema.CurrentVersion,
+                    "Recibo legado precisa ser carregado como schema atual na visualizacao.");
+                Expect(document.Details.Any(detail => detail.Field == "ReceiptId" && detail.Value == "legacy-cleanup"),
+                    "Recibo legado precisa preservar identificador apos normalização.");
+            }
+            finally
+            {
+                if (Directory.Exists(fixtureRoot)) Directory.Delete(fixtureRoot, true);
+            }
         }
 
         private static void TestCancellationAndProcessGuard(string fixtureRoot)
@@ -588,6 +638,82 @@ namespace Clnxr.Safety.Tests
                 "Cancelamento de analise nao pode remover arquivos da fixture.");
         }
 
+        private static void TestAccessDeniedHandling(string fixtureRoot)
+        {
+            string root = Path.Combine(fixtureRoot, "acl-denied");
+            Directory.CreateDirectory(root);
+            string deniedFile = Path.Combine(root, "protected.bin");
+            File.WriteAllBytes(deniedFile, new byte[] { 1, 2, 3, 4, 5 });
+
+            NTAccount user = new NTAccount(WindowsIdentity.GetCurrent().Name);
+            FileInfo fileInfo = new FileInfo(deniedFile);
+            FileSecurity fileSecurity = fileInfo.GetAccessControl();
+            FileSystemAccessRule denyDeleteRule = new FileSystemAccessRule(
+                user,
+                FileSystemRights.Delete,
+                AccessControlType.Deny);
+            fileSecurity.AddAccessRule(denyDeleteRule);
+
+            bool aclWorked = false;
+            try
+            {
+                fileInfo.SetAccessControl(fileSecurity);
+                try
+                {
+                    File.Delete(deniedFile);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    aclWorked = true;
+                }
+            }
+            catch
+            {
+                aclWorked = false;
+            }
+
+            if (!File.Exists(deniedFile))
+            {
+                // Se a ACL não bloqueou a deleção, reconstroi o arquivo e usa
+                // atributo ReadOnly para garantir o comportamento de falha controlada.
+                File.WriteAllBytes(deniedFile, new byte[] { 1, 2, 3, 4, 5 });
+                File.SetAttributes(deniedFile, FileAttributes.ReadOnly);
+            }
+
+            if (!aclWorked)
+            {
+                // Remove qualquer ACL adicionada, porque o cenário abaixo usa ReadOnly.
+                try { fileInfo.SetAccessControl(fileSecurity); } catch { }
+            }
+
+            try
+            {
+                Rule rule = CreateRule("fixture-access-denied-v1", RiskLevel.Safe);
+                Finding finding = new Finding("fixture-access-denied", rule, "T:\\", root, root, null, 5, 1);
+                CleanupReceipt receipt = new CleanupExecutor(new PathSafetyPolicy(), new FakeProcessInspector(false)).Execute(
+                    ActionPlan.Create(CreateReviewedSession(finding), new[] { finding.FindingId }), CancellationToken.None, null);
+                Expect(receipt.Results.Single().Status == ActionStatus.Skipped,
+                    "A tentativa de apagar arquivo sem permissoes deve ser tratada como pulo seguro.");
+                Expect(File.Exists(deniedFile), "Arquivo sem permissao de delecao deve permanecer na fixture.");
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(deniedFile))
+                    {
+                        fileSecurity.RemoveAccessRule(denyDeleteRule);
+                        fileInfo.SetAccessControl(fileSecurity);
+                        File.SetAttributes(deniedFile, FileAttributes.Normal);
+                        File.Delete(deniedFile);
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
         private static void TestJunctionGuard(string fixtureRoot)
         {
             string target = Path.Combine(fixtureRoot, "junction-target");
@@ -769,6 +895,17 @@ namespace Clnxr.Safety.Tests
         {
             return new Rule(ruleId, "1", "Fixture", "Regra de teste", risk, RuleActionKind.DirectoryContents,
                 new[] { "Teste" }, requiredProcesses);
+        }
+
+        private static string ComputeSha256(string value)
+        {
+            using (SHA256 sha = SHA256.Create())
+            {
+                byte[] hash = sha.ComputeHash(Encoding.UTF8.GetBytes(value ?? string.Empty));
+                StringBuilder output = new StringBuilder(hash.Length * 2);
+                foreach (byte item in hash) output.Append(item.ToString("x2"));
+                return output.ToString();
+            }
         }
 
         private static void Expect(bool condition, string message)

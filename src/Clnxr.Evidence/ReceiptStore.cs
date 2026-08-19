@@ -139,20 +139,28 @@ namespace Clnxr.Evidence
             try
             {
                 string payload = File.ReadAllText(path, Encoding.UTF8);
-                serializer.DeserializeObject(payload);
+                IDictionary document = serializer.DeserializeObject(payload) as IDictionary;
+                if (document == null) return new ReceiptFileVerification(false, "O recibo nao contem um objeto JSON valido.");
 
-                Match schemaMatch = Regex.Match(payload, "\\\"SchemaVersion\\\"\\s*:\\s*\\\"(?<schema>[^\\\"]+)\\\"", RegexOptions.CultureInvariant);
-                if (!schemaMatch.Success) return new ReceiptFileVerification(false, "Recibo sem versão de esquema declarada.");
+                string schemaVersion;
+                bool isLegacy;
+                if (!TryIdentifyReceiptSchema(document, out schemaVersion, out isLegacy))
+                    return new ReceiptFileVerification(false, "Recibo sem versão de esquema declarada ou com versão de esquema nao suportada.");
 
-                Match hashMatch = Regex.Match(payload, "\\\"ReceiptHash\\\"\\s*:\\s*\\\"(?<hash>[a-fA-F0-9]{64})\\\"", RegexOptions.CultureInvariant);
-                if (!hashMatch.Success) return new ReceiptFileVerification(false, "Recibo sem hash SHA-256 válido.");
+                string storedHash;
+                if (!TryGetReceiptHash(document, out storedHash))
+                    return new ReceiptFileVerification(false, "Recibo sem hash SHA-256 válido.");
 
-                string storedHash = hashMatch.Groups["hash"].Value;
-                string unsignedPayload = payload.Remove(hashMatch.Groups["hash"].Index, hashMatch.Groups["hash"].Length);
+                string unsignedPayload = RemoveReceiptHashValueFromPayload(payload, storedHash);
+                if (string.IsNullOrEmpty(unsignedPayload))
+                    return new ReceiptFileVerification(false, "Nao foi possivel localizar hash do recibo no arquivo JSON.");
+
                 bool valid = string.Equals(storedHash, ComputeSha256(unsignedPayload), StringComparison.OrdinalIgnoreCase);
-                return valid
-                    ? new ReceiptFileVerification(true, "Integridade SHA-256 confirmada localmente para " + schemaMatch.Groups["schema"].Value + ".")
-                    : new ReceiptFileVerification(false, "O conteúdo do recibo não corresponde ao hash registrado.");
+                if (!valid) return new ReceiptFileVerification(false, "O conteúdo do recibo não corresponde ao hash registrado.");
+
+                string message = "Integridade SHA-256 confirmada localmente para " + schemaVersion + ".";
+                if (isLegacy) message += " Recibo migrou automaticamente para " + ReceiptSchema.CurrentVersion + " na leitura.";
+                return new ReceiptFileVerification(true, message);
             }
             catch (Exception ex)
             {
@@ -166,13 +174,20 @@ namespace Clnxr.Evidence
             if (!File.Exists(path)) throw new FileNotFoundException("Recibo local inexistente.", path);
 
             string payload = File.ReadAllText(path, Encoding.UTF8);
-            IDictionary document = serializer.DeserializeObject(payload) as IDictionary;
+            IDictionary rawDocument = serializer.DeserializeObject(payload) as IDictionary;
+            if (rawDocument == null) throw new InvalidDataException("O recibo nao contem um objeto JSON valido.");
+
+            string schemaVersion;
+            bool isLegacy;
+            if (!TryIdentifyReceiptSchema(rawDocument, out schemaVersion, out isLegacy))
+                throw new InvalidDataException("Recibo sem versão de esquema declarada ou com versão de esquema nao suportada.");
+
+            IDictionary document = NormalizeDocumentForDisplay(rawDocument, isLegacy);
             if (document == null) throw new InvalidDataException("O recibo nao contem um objeto JSON valido.");
 
             List<ReceiptDetail> details = new List<ReceiptDetail>();
-            object schema;
-            string schemaVersion = document.Contains("SchemaVersion") && (schema = document["SchemaVersion"]) != null
-                ? Convert.ToString(schema) : string.Empty;
+            object schema = GetFieldValue(document, "SchemaVersion");
+            if (schema != null) schemaVersion = Convert.ToString(schema);
 
             AddDetails(details, "Recibo", document, "Results");
             object results = document.Contains("Results") ? document["Results"] : null;
@@ -213,6 +228,130 @@ namespace Clnxr.Evidence
             IEnumerable list = value as IEnumerable;
             if (list != null) return "[colecao]";
             return Convert.ToString(value);
+        }
+
+        private static bool TryIdentifyReceiptSchema(IDictionary document, out string schemaVersion, out bool isLegacy)
+        {
+            isLegacy = false;
+            schemaVersion = GetFieldValue(document, "SchemaVersion") as string ?? GetFieldValue(document, "schemaVersion") as string;
+
+            if (!string.IsNullOrWhiteSpace(schemaVersion))
+            {
+                if (string.Equals(schemaVersion, ReceiptSchema.CurrentVersion, StringComparison.Ordinal))
+                    return true;
+
+                if (string.Equals(schemaVersion, ReceiptSchema.LegacyReceiptVersion, StringComparison.Ordinal))
+                {
+                    isLegacy = true;
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (GetFieldValue(document, "results") != null || GetFieldValue(document, "Results") != null
+                || GetFieldValue(document, "receiptId") != null || GetFieldValue(document, "ReceiptId") != null
+                || GetFieldValue(document, "toolId") != null || GetFieldValue(document, "ToolId") != null)
+            {
+                schemaVersion = ReceiptSchema.LegacyReceiptVersion;
+                isLegacy = true;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static IDictionary NormalizeDocumentForDisplay(IDictionary document, bool isLegacy)
+        {
+            IDictionary normalized = CloneDocument(document);
+            RenameField(normalized, "receiptHash", "ReceiptHash");
+            RenameField(normalized, "schemaVersion", "SchemaVersion");
+            RenameField(normalized, "receiptId", "ReceiptId");
+            RenameField(normalized, "planId", "PlanId");
+            RenameField(normalized, "sessionId", "SessionId");
+            RenameField(normalized, "wasCancelled", "WasCancelled");
+            RenameField(normalized, "startedUtc", "StartedUtc");
+            RenameField(normalized, "completedUtc", "CompletedUtc");
+            RenameField(normalized, "totalFilesRemoved", "TotalFilesRemoved");
+            RenameField(normalized, "totalBytesRemoved", "TotalBytesRemoved");
+            RenameField(normalized, "totalItemsSkipped", "TotalItemsSkipped");
+            RenameField(normalized, "totalFindingsSkipped", "TotalFindingsSkipped");
+            RenameField(normalized, "results", "Results");
+            RenameField(normalized, "resultados", "Results");
+            RenameField(normalized, "toolId", "ToolId");
+            RenameField(normalized, "estimatedItems", "EstimatedItems");
+            RenameField(normalized, "estimatedBytes", "EstimatedBytes");
+            RenameField(normalized, "message", "Message");
+            RenameField(normalized, "status", "Status");
+
+            object currentSchema = GetFieldValue(normalized, "SchemaVersion");
+            if (string.IsNullOrWhiteSpace(currentSchema as string))
+            {
+                normalized["SchemaVersion"] = ReceiptSchema.CurrentVersion;
+            }
+            else if (isLegacy)
+            {
+                normalized["SchemaVersion"] = ReceiptSchema.CurrentVersion;
+            }
+
+            return normalized;
+        }
+
+        private static bool TryGetReceiptHash(IDictionary document, out string hash)
+        {
+            hash = null;
+            object hashValue = GetFieldValue(document, "ReceiptHash");
+            if (hashValue == null) hashValue = GetFieldValue(document, "receiptHash");
+            if (hashValue == null) return false;
+
+            hash = Convert.ToString(hashValue);
+            return !string.IsNullOrWhiteSpace(hash) && Regex.IsMatch(hash, "^[a-fA-F0-9]{64}$", RegexOptions.CultureInvariant);
+        }
+
+        private static string RemoveReceiptHashValueFromPayload(string payload, string hash)
+        {
+            Match hashMatch = Regex.Match(
+                payload,
+                "\\\"(?<field>ReceiptHash|receiptHash)\\\"\\s*:\\s*\\\"(?<hash>" + Regex.Escape(hash) + ")\\\"",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!hashMatch.Success) return null;
+            return payload.Remove(hashMatch.Groups["hash"].Index, hashMatch.Groups["hash"].Length);
+        }
+
+        private static object GetFieldValue(IDictionary document, string fieldName)
+        {
+            foreach (DictionaryEntry entry in document)
+            {
+                if (string.Equals(Convert.ToString(entry.Key), fieldName, StringComparison.OrdinalIgnoreCase))
+                    return entry.Value;
+            }
+
+            return null;
+        }
+
+        private static IDictionary CloneDocument(IDictionary source)
+        {
+            IDictionary clone = new Hashtable();
+            foreach (DictionaryEntry entry in source) clone[entry.Key] = entry.Value;
+            return clone;
+        }
+
+        private static void RenameField(IDictionary source, string sourceField, string targetField)
+        {
+            object sourceValue = GetFieldValue(source, sourceField);
+            if (sourceValue == null) return;
+
+            object[] keys = new object[source.Keys.Count];
+            source.Keys.CopyTo(keys, 0);
+            foreach (object key in keys)
+            {
+                if (!string.Equals(Convert.ToString(key), sourceField, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                source.Remove(key);
+                source[targetField] = sourceValue;
+                return;
+            }
         }
 
         private static string ComputeSha256(string value)

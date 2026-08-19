@@ -51,6 +51,7 @@ namespace Clnxr.Core
     public static class ReceiptSchema
     {
         public const string CurrentVersion = "clnxr.receipt.v1";
+        public const string LegacyReceiptVersion = "clnxr.receipt.v0";
     }
 
     public static class PathRedactor

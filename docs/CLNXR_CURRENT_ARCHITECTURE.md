@@ -18,7 +18,7 @@ Esta auditoria descreve o estado verificável em 18 de agosto de 2026 em `D:\Pro
 | `FileMeasurement` | Percorre diretórios e mede arquivos | Produz contagens e avisos estruturados, mas ainda não há benchmark de volume grande. |
 | `CleanupExecutor` | Revalida política, processo, reparse point, hard link físico e remove somente alvos elegíveis | Não substitui testes de ACL/concorrência em VM e não encerra processos por design. |
 | `UserDataCleanupService` | Mede e remove apenas dados próprios em uma raiz dedicada `%LocalAppData%\\CLNXR`, preservando a raiz e reparse points | Não aceita caminhos arbitrários; a ação exige prévia/confirmação da UI e ainda precisa de teste visual/VM. |
-| `ScanSession` / `CleanupReceipt` | Resultado de análise, ação, contagens, bytes, saltos e hash persistido | Migração formal de versões de recibo e assinatura do recibo ainda não existem. |
+| `ScanSession` / `CleanupReceipt` | Resultado de análise, ação, contagens, bytes, saltos e hash persistido | Migração formal de versões de recibo legado foi implementada (`clnxr.receipt.v0` -> `clnxr.receipt.v1`) com normalização para a visualização e validação. |
 | `WindowsRulePack` / `SignedRulePackService` | Carrega JSON embutido ou verifica localmente envelope RSA/SHA-256 antes de materializar regras | Não existe chave pública de produção, download, rotação, rollback ou canal autenticado; o scanner continua usando o recurso embutido. |
 | `StartupExplorerService` | Enumera HKCU/HKLM Run/RunOnce e pastas; permite apenas mutação HKCU com revalidação e backup reversível | Não executa comandos, não toca HKLM/pastas e não eleva automaticamente; restauração real ainda requer teste manual controlado. |
 | `UninstallResidualService` | Inventaria entradas conhecidas e marca somente `InstallLocation` declarado ausente | Não adivinha sobras, não remove Registro e não executa desinstaladores. |
@@ -49,7 +49,7 @@ Fatos observados no código:
 | Média | Preferências locais de movimento reduzido, idioma/tema e opt-in de atualização são persistidas em INI sanitizado; idioma/tema continuam fixos no protótipo. | Não há tradução adicional, troca visual de tema ou updater; o arquivo local não é prova de canal de atualização seguro. |
 | Média | Agendamento e mutação HKCU têm contratos fixos, mas execução real foi mantida fora dos testes automatizados. | O contrato é verificável; comportamento de conta/Task Scheduler/Registro precisa de validação manual. |
 | Média | Há repositório e solução publicados, mas targeting pack/SDK fixado e pipeline reprodutível ainda não existem. | A build local é verificável, mas não é release reproduzível. |
-| Baixa | O nome visual é provisório. | Não bloqueia o núcleo, mas bloqueia publicação até validação de marca. |
+| Baixa | Nome visual definido como `CLNXR`. | Não bloqueia o núcleo, mas publicação pública ainda depende de validação de marca e compliance. |
 
 ## Decisão de migração
 

@@ -71,4 +71,4 @@ Nenhum botão da UI pode ignorar o planejamento, a política ou o recibo.
 
 - Uma UI moderna C# exige instalar e fixar um SDK suportado; esse ambiente hoje não o possui.
 - A UI final será WPF ou WinUI, não decidida por marketing. A decisão depende de uma prova de build, acessibilidade, portabilidade e manutenção.
-- O nome público não será fixado até validação jurídica, domínio e identificadores sociais. `CLNXR` é apenas o nome de trabalho definido no roadmap.
+- O nome público não será fixado até validação jurídica, domínio e identificadores sociais. `CLNXR` é a denominação de desenvolvimento adotada no projeto até validação dessa camada.
