@@ -23,17 +23,18 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | 3 — Limpador seguro P0 | Parcial forte | Perfis Seguro/Completo/Jogos/Desenvolvedor/Personalizado, revalidação, filtro de idade para dumps/WER, caches GPU Intel/AMD/NVIDIA, caches de navegador restritos a subpastas conhecidas, bytes removidos, nova análise, fixtures e recibos redigidos. | Integração em VM para ACL, arquivos abertos e caches reais; Delivery Optimization/Windows Update ainda só abre a ferramenta oficial. |
 | 4 — Resultados e histórico | Parcial forte | Grid de resultados, riscos, regras, recibos listados localmente, verificação SHA-256, visualização estruturada em modo leitura e exportação explícita de JSON. | Filtros/virtualização e validação visual/manual do fluxo. |
 | 5 — Ferramentas P1 | Parcial funcional | Perfis Jogos/Desenvolvedor em `REVIEW`; stores NuGet/npm/pnpm/Yarn/pip/uv e caches Gradle/Maven/Cargo; caches Discord/Teams/Epic/Spotify e caminho Electron delimitado; regras personalizadas locais com prévia e limpeza explícita; Lixeira isolada pela API oficial; launcher confirmado para o Storage Sense oficial; mapa de disco, arquivos grandes e duplicados em modo somente leitura com cancelamento e defesa contra reparse point; Explorador de inicialização com desabilitação/restauração reversível somente em HKCU; Inspetor de arquivos bloqueados; inventário de resíduos baseado em `InstallLocation`; agendamento Seguro opt-in com argumentos fixos, recibo e remoção explícita. | Teste visual, desempenho em volumes grandes, esvaziamento em VM, teste manual controlado de Registro/Task Scheduler, importação/assinatura de regras e cobertura maior de launchers/dev tools. |
+| 5 — P3 local: Network Utilities e System Repair Hub | Implementado localmente com limites | Diagnóstico/Flush DNS, planos de reset sem execução automática, SFC/DISM/CHKDSK somente verificação, UI confirmável, comandos fixos, saída limitada e recibos locais; contratos cobertos no grupo P3. | Falta validação visual e em VM/ACL/conta elevada; não há promessa de reparo, disponibilidade de utilitário ou resultado universal. |
 | 6 — Beta público | Pré-release técnico, não beta | Pacote ZIP, checksum e SBOM de desenvolvimento publicados em `https://github.com/h3atry/CLNXR/releases`. | Assinatura, política/termos revisados, updater, VM limpa, auditoria e beta consentido. |
 | 7 — 1.0 | Não iniciado | Nenhuma evidência suficiente. | Todos os gates de beta, telemetria/relato opcional, suporte e auditoria externa. |
 | 8 — Futuro | Fora do P0/P1 | Nenhuma ação requerida agora. | Só priorizar após dados reais de beta. |
 
 ## Evidência de validação local disponível
 
-- `Clnxr.Safety.Tests`: quinze grupos executados em sandbox temporário; inclui destino protegido, limpeza pelo serviço de aplicação, recibos com redação de caminho, cancelamento antes e durante análise P1, arquivo bloqueado, catálogo P0/P1, validação do pacote declarativo e perfil Personalizado, regras personalizadas com prévia/limpeza explícita e persistência local, caches de navegador protegidos, filtro de idade, ferramentas P1 somente leitura, contrato de resíduos de desinstalação, plano de agendamento fixo, lista de backups de inicialização, recusa de entrada não suportada, Explorador de inicialização, Inspetor de arquivos bloqueados via Restart Manager, junction, TOCTOU e symlink de diretório.
+- `Clnxr.Safety.Tests`: dezesseis grupos executados em sandbox temporário; inclui destino protegido, limpeza pelo serviço de aplicação, recibos com redação de caminho, cancelamento antes e durante análise P1, arquivo bloqueado, catálogo P0/P1, validação do pacote declarativo e perfil Personalizado, regras personalizadas com prévia/limpeza explícita e persistência local, caches de navegador protegidos, filtro de idade, ferramentas P1 somente leitura, P2 reversível, contratos fechados de Network Utilities/System Repair, junction, TOCTOU e symlink de diretório.
 - `Clnxr.WindowsScan.Smoke`: scan Seguro real em modo leitura e consulta global da Lixeira pela API do Windows, sem alteração de dados.
 - `Clnxr.Desktop.Smoke`: construção e descarte não visual da janela desktop em STA, sem análise ou limpeza.
 - `CLNXR.sln`: build Release dos doze projetos pelo MSBuild clássico e execução dos quatro binários de teste contra os assemblies físicos; o CLI também foi exercitado com dry-run e JSON.
-- `artifacts\CLNXR-Portable\`: bundle da revisão atual; o ZIP `artifacts\CLNXR-Portable-0.1.0-dev.4.zip` será a referência depois do rebuild e da conferência desta rodada.
+- `artifacts\CLNXR-Portable\`: bundle da revisão atual; o ZIP `artifacts\CLNXR-Portable-0.1.0-dev.5.zip` será a referência depois do rebuild e da conferência desta rodada.
 - O pacote da revisão atual deve ser validado quanto aos arquivos obrigatórios, hashes internos e dry-run do CLI extraído antes da publicação; os hashes de dev.3 permanecem apenas como histórico.
 
 ## Auditoria de artefatos — 18/08/2026
@@ -42,15 +43,15 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | --- | --- | --- |
 | Bundle portátil | Presente | Artefato local com DLLs modulares; não prova segurança ou prontidão pública. |
 | ZIP portátil | Presente | Pacote local gerado; não substitui instalação/teste em máquina limpa. |
-| SHA-256 do executável | `66EE7F3ABD01B307CE2C2BA4DAC5800A23A2381D77441694716468DC4138FDE3` | Confere com o executável gráfico de `v0.1.0-dev.4`; não é assinatura Authenticode. |
-| SHA-256 do ZIP | `5512707B707AC672B8505ED3809D828B642F2E19D420389A292357BE5B0C6F08` | ZIP `v0.1.0-dev.4` com 16 entradas; 15 hashes internos conferidos e CLI extraído em dry-run sem vazamento do usuário. |
+| SHA-256 do executável | `F098EBD88A433B975C332D1AC8FEB63540F688B121592CEEB497ADA4E1ED9618` | Confere com o executável gráfico de `v0.1.0-dev.5`; não é assinatura Authenticode. |
+| SHA-256 do ZIP | `0697F14F635E4CAAE504FFFBF0187A3D4FF519CC3E6A0D7B8AA99D326C44DADD` | ZIP `v0.1.0-dev.5` com 16 entradas; 15 hashes internos conferidos, CLI extraído em dry-run e diagnóstico de rede somente leitura exercitado. |
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |
-| Estado Git | Revisão dev.3 publicada no `master`/`main`; código dev.4 e pacote conferidos localmente, publicação pendente | O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
+| Estado Git | Revisão dev.4 publicada; código dev.5 e pacote conferidos localmente, publicação desta revisão pendente | O código e a documentação versionados permanecem separados dos binários de desenvolvimento na raiz (`CLNXR.exe` e `Program.cs`), que continuam ignorados fora do escopo público. |
 
 ## Decisão de término honesta
 
-O desenvolvimento local atingiu um protótipo P0/P1 com validações específicas. O roadmap completo não pode ser declarado terminado porque as fases 6 e 7 exigem autoridade e estado externo que não podem ser simulados por código: identidade/marca, certificado de assinatura, ambiente limpo, publicação controlada, atualização, beta externo e revisão jurídica/segurança.
+O desenvolvimento local atingiu um protótipo P0/P1/P3 com validações específicas. O roadmap completo não pode ser declarado terminado porque as fases 6 e 7 exigem autoridade e estado externo que não podem ser simulados por código: identidade/marca, certificado de assinatura, ambiente limpo, publicação controlada, atualização, beta externo e revisão jurídica/segurança.
 
 O próximo trabalho local legítimo é reduzir as lacunas de teste e de UI listadas acima. Para ultrapassar os gates externos, é necessária autorização e os respectivos recursos; não é aceitável substituir esses gates por um print, checksum ou compilação local.

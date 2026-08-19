@@ -4,7 +4,7 @@ Limpador de cache local para Windows, com análise antes de qualquer limpeza, se
 
 ## Estado desta entrega
 
-O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento local; o ZIP correspondente desta revisão está em `artifacts\CLNXR-Portable-0.1.0-dev.4.zip`. Ele foi compilado e o núcleo passou pelos testes de sandbox incluídos no projeto. Não foi validado visualmente nesta máquina, em máquina virtual limpa, com assinatura de código ou por beta público; portanto, não deve ser apresentado como release público ou como prova de compatibilidade universal.
+O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento local; o ZIP correspondente desta revisão está em `artifacts\CLNXR-Portable-0.1.0-dev.5.zip`. Ele foi compilado e o núcleo passou pelos testes de sandbox incluídos no projeto. Não foi validado visualmente nesta máquina, em máquina virtual limpa, com assinatura de código ou por beta público; portanto, não deve ser apresentado como release público ou como prova de compatibilidade universal.
 
 O nome `CLNXR` é provisório. Marca, domínio, identificadores públicos e assinatura de código permanecem fora do escopo local até validação própria.
 
@@ -27,6 +27,7 @@ Repositório público e pré-release técnico: [github.com/h3atry/CLNXR](https:/
 - Regras personalizadas podem ser criadas pela página Regras: o usuário escolhe uma pasta, idade mínima, extensões, exclusões e atribuição; o CLNXR mostra uma prévia redigida antes de salvar. Elas são persistidas localmente em `%LocalAppData%\\CLNXR\\Rules\\custom-rules.v1.json`, entram somente no perfil Personalizado, são sempre `ADVANCED` e permanecem `unsigned`; raízes protegidas, perfil pessoal inteiro, Downloads e reparse points são recusados.
 - Mapa de disco, Arquivos grandes e Duplicados são ferramentas P1 de inventário: executam apenas depois de ação explícita, são canceláveis, ignoram reparse points e não oferecem exclusão nesta versão. Arquivos grandes mostram no máximo 100 resultados a partir de 512 MB; duplicados usam SHA-256 em candidatos a partir de 64 MB e limitam o hash a 10.000 arquivos.
 - A página Ferramentas também oferece o Explorador de inicialização, o Inspetor de arquivos bloqueados, o inventário de resíduos e o agendamento Seguro. O explorador enumera Run/RunOnce e pastas de Inicialização; após confirmação, somente valores `HKCU` podem ser desabilitados com backup local reversível e restauração explícita. `HKLM`, pastas e comandos não são alterados. O inspetor consulta o Restart Manager sem encerrar processos. Resíduos são apenas candidatos baseados em `InstallLocation` declarado; nenhum desinstalador ou chave é executado/removido. O agendamento usa apenas o perfil Seguro, horário fixo e `schtasks.exe` sem elevação automática, e pode ser removido pelo próprio botão.
+- A página Ferramentas também oferece diagnóstico de rede e verificações do sistema. Rede usa `ipconfig.exe /all` em modo somente leitura e `ipconfig.exe /flushdns` somente após confirmação; Winsock/TCP-IP são exibidos como planos manuais, sem execução silenciosa, pois exigem elevação e reinicialização. O System Repair Hub executa, sob confirmação, apenas `sfc /verifyonly`, `DISM /Online /Cleanup-Image /CheckHealth` e `chkdsk X: /scan`; não há correção automática por `/scannow`, `/RestoreHealth` ou `/f`.
 - Não há atualizador, assinatura de código, SBOM de release assinado, instalador ou telemetria.
 - A persistência de regras personalizadas é local ao usuário e não acompanha automaticamente o ZIP portátil; importar/exportar regras e assinatura/marketplace continuam fora desta prévia.
 
@@ -41,7 +42,7 @@ src/Clnxr.Core/             domínio e planos imutáveis
 src/Clnxr.Safety/           política de caminho, áreas protegidas e reparse points
 src/Clnxr.Actions/          executor com revalidação e cancelamento
 src/Clnxr.Evidence/         recibos locais e hash
-src/Clnxr.Platform.Windows/ regras e descoberta de Windows
+src/Clnxr.Platform.Windows/ regras, descoberta e ferramentas controladas de Windows
 src/Clnxr.Application/      casos de uso que unem scan, plano, execução, recibos e ferramentas
 src/Clnxr.Desktop/          adaptador WinForms provisório
 src/Clnxr.Cli/              modo CLI dry-run/JSON com confirmação explícita
