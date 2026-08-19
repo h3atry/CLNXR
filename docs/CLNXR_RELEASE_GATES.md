@@ -16,6 +16,7 @@
 - [x] Pacote ZIP local com executável, política de privacidade, versão, SBOM de desenvolvimento e checksum do executável.
 - [ ] Teste visual interativo do build novo.
 - [x] Testes com junction NTFS real, alvo trocado por junction (TOCTOU), symlink separado, arquivo real em uso e cancelamento antes da ação.
+- [x] Teste com arquivo NTFS que possui hard link externo; ambos os nomes são preservados e a política bloqueia o alvo.
 - [ ] Testes com ACL negada.
 - [x] Cancelamento no meio de árvore de fixture para análise P1 somente leitura, sem remoção de arquivos.
 
@@ -28,7 +29,7 @@
 - [x] Regras iniciais de Jogos (Unreal), Desenvolvedor (NuGet, npm, pnpm, Yarn, pip, uv, Gradle, Maven e Cargo) e caches de apps delimitados (Discord, Teams, Epic, Spotify e Electron), todas `REVIEW`/`ADVANCED` e desmarcadas por padrão.
 - [x] Catálogo Windows migrado para pacote declarativo versionado, embutido e validado antes do uso; IDs duplicados e schema inválido falham a carga.
 - [x] Regras personalizadas locais com prévia antes de salvar, escopo por pasta/idade/extensão/exclusão, risco `ADVANCED`, assinatura `unsigned`, persistência versionada e limpeza por itens explícitos revalidados.
-- [ ] Pacote de regras assinado e atualizado por canal autenticado.
+- [ ] Pacote de regras assinado e atualizado por canal autenticado. Existe apenas verificação local de envelope RSA/SHA-256; falta chave pública confiável, distribuição autenticada, rotação e rollback.
 - [x] Motor somente leitura para mapa de disco, arquivos grandes e grupos duplicados, com cancelamento, limite de candidatos e exclusão de reparse points.
 - [x] Interface provisória compilada expõe Mapa de disco, Arquivos grandes e Duplicados como ações explícitas; duplicados exige confirmação antes do hash.
 - [x] Interface provisória compilada expõe Explorador de inicialização com desabilitação/restauração reversível somente para `HKCU` Run/RunOnce, além do Inspetor de arquivos bloqueados somente leitura; `HKLM`, pastas, processos e comandos permanecem fora da mutação.
@@ -48,7 +49,7 @@
 
 ## Gates externos para beta público / 1.0
 
-O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.6`/`v0.1.0-dev.7` existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
+O repositório público e os pré-releases técnicos `v0.1.0-dev.5`/`v0.1.0-dev.6`/`v0.1.0-dev.7`/`v0.1.0-dev.8` existem em `https://github.com/h3atry/CLNXR`; isso não equivale a beta público nem atende os gates abaixo.
 
 - [ ] Nome, marca, domínio e identificadores públicos verificados juridicamente.
 - [ ] Certificado de assinatura de código e chave de assinatura sob controle apropriado.

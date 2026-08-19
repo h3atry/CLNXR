@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-dev.8 — 2026-08-19
+
+- Bloqueia arquivos com mais de um hard link físico antes da remoção e preserva esses itens no serviço de dados próprios, reduzindo o risco de apagar um nome externo por meio de um candidato interno.
+- Adiciona verificação local de envelopes de regras RSA/SHA-256 (`clnxr.rules.signed.v1`), com validação de schema e catálogo somente depois da assinatura; o contrato não baixa pacotes, não escolhe chaves confiáveis e não atualiza o aplicativo.
+- O sandbox passa a cobrir adulteração de payload, chave incorreta, hard link externo e preservação dos dois nomes físicos; são 20 grupos executados.
+- Mantém a entrega como pré-release técnico: chave pública de produção, canal autenticado, updater, assinatura Authenticode, VM limpa, validação visual e beta externo continuam pendentes.
+
 ## 0.1.0-dev.7 — 2026-08-19
 
 - Adiciona remoção explícita dos dados próprios do CLNXR em `%LocalAppData%\\CLNXR`, limitada a recibos, regras e configurações do aplicativo; a raiz é preservada para reinstalação e nenhum caminho arbitrário é aceito.

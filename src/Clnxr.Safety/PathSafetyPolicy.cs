@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Clnxr.Core;
 
 namespace Clnxr.Safety
@@ -118,8 +119,24 @@ namespace Clnxr.Safety
             if (IsProtected(target)) return SafetyDecision.Deny("O item pertence a uma area permanentemente protegida.");
             if (ContainsReparsePoint(root) || ContainsReparsePoint(target))
                 return SafetyDecision.Deny("O item contem link, junction ou outro reparse point.");
+            if (File.Exists(target) && HasMultipleHardLinks(target))
+                return SafetyDecision.Deny("O item possui hard link adicional e foi preservado por segurança.");
 
             return SafetyDecision.Allow(target);
+        }
+
+        /// <summary>
+        /// Verifica o número de nomes físicos de um arquivo. Se o Windows não
+        /// permitir consultar o metadado, falha fechado para não remover um
+        /// arquivo cuja identidade física não pôde ser confirmada.
+        /// </summary>
+        public static bool HasMultipleHardLinks(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return false;
+
+            uint linkCount;
+            if (!TryGetHardLinkCount(path, out linkCount)) return true;
+            return linkCount > 1;
         }
 
         public static bool IsWithinRoot(string candidate, string root)
@@ -172,6 +189,58 @@ namespace Clnxr.Safety
         private static bool PathExists(string path)
         {
             return File.Exists(path) || Directory.Exists(path);
+        }
+
+        private static bool TryGetHardLinkCount(string path, out uint linkCount)
+        {
+            linkCount = 0;
+            IntPtr handle = CreateFile(path, 0, FileShareRead | FileShareWrite | FileShareDelete,
+                IntPtr.Zero, OpenExisting, FileFlagBackupSemantics, IntPtr.Zero);
+            if (handle == InvalidHandleValue) return false;
+
+            try
+            {
+                ByHandleFileInformation information;
+                if (!GetFileInformationByHandle(handle, out information)) return false;
+                linkCount = information.NumberOfLinks;
+                return true;
+            }
+            finally
+            {
+                CloseHandle(handle);
+            }
+        }
+
+        private const uint FileShareRead = 0x00000001;
+        private const uint FileShareWrite = 0x00000002;
+        private const uint FileShareDelete = 0x00000004;
+        private const uint OpenExisting = 3;
+        private const uint FileFlagBackupSemantics = 0x02000000;
+        private static readonly IntPtr InvalidHandleValue = new IntPtr(-1);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr CreateFile(string fileName, uint desiredAccess, uint shareMode,
+            IntPtr securityAttributes, uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetFileInformationByHandle(IntPtr fileHandle, out ByHandleFileInformation information);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr handle);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ByHandleFileInformation
+        {
+            public uint FileAttributes;
+            public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+            public uint VolumeSerialNumber;
+            public uint FileSizeHigh;
+            public uint FileSizeLow;
+            public uint NumberOfLinks;
+            public uint FileIndexHigh;
+            public uint FileIndexLow;
         }
 
         private static bool IsProtected(string path)

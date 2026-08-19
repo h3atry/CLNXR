@@ -16,10 +16,10 @@ Esta auditoria descreve o estado verificável em 18 de agosto de 2026 em `D:\Pro
 | `MainForm` | Janela, seleção, confirmação, scan e limpeza assíncrona | Ainda concentra orquestração de tela; a separação em serviços existe, a grade de resultados usa virtualização de linhas e a UI permanece WinForms provisória. |
 | `WindowsCandidateScanner` | Descobre perfis/discos e cria candidatos conhecidos | Usa regras versionadas do pacote declarativo; assinatura e atualização do pacote ainda não existem. |
 | `FileMeasurement` | Percorre diretórios e mede arquivos | Produz contagens e avisos estruturados, mas ainda não há benchmark de volume grande. |
-| `CleanupExecutor` | Revalida política, processo, reparse point e remove somente alvos elegíveis | Não substitui testes de ACL/concorrência em VM e não encerra processos por design. |
+| `CleanupExecutor` | Revalida política, processo, reparse point, hard link físico e remove somente alvos elegíveis | Não substitui testes de ACL/concorrência em VM e não encerra processos por design. |
 | `UserDataCleanupService` | Mede e remove apenas dados próprios em uma raiz dedicada `%LocalAppData%\\CLNXR`, preservando a raiz e reparse points | Não aceita caminhos arbitrários; a ação exige prévia/confirmação da UI e ainda precisa de teste visual/VM. |
 | `ScanSession` / `CleanupReceipt` | Resultado de análise, ação, contagens, bytes, saltos e hash persistido | Migração formal de versões de recibo e assinatura do recibo ainda não existem. |
-| `WindowsRulePack` | Carrega JSON embutido, valida schema, versão, IDs, perfis e riscos | O pacote é versionado, mas não assinado nem atualizável de forma autenticada. |
+| `WindowsRulePack` / `SignedRulePackService` | Carrega JSON embutido ou verifica localmente envelope RSA/SHA-256 antes de materializar regras | Não existe chave pública de produção, download, rotação, rollback ou canal autenticado; o scanner continua usando o recurso embutido. |
 | `StartupExplorerService` | Enumera HKCU/HKLM Run/RunOnce e pastas; permite apenas mutação HKCU com revalidação e backup reversível | Não executa comandos, não toca HKLM/pastas e não eleva automaticamente; restauração real ainda requer teste manual controlado. |
 | `UninstallResidualService` | Inventaria entradas conhecidas e marca somente `InstallLocation` declarado ausente | Não adivinha sobras, não remove Registro e não executa desinstaladores. |
 | `ScheduledCleanupService` | Constrói e executa comando fixo de `schtasks.exe` para perfil Seguro diário; remove a mesma tarefa | Contrato testado sem mutação; execução real depende de Task Scheduler/conta e confirmação manual. |
@@ -43,8 +43,8 @@ Fatos observados no código:
 
 | Severidade | Lacuna | Consequência |
 | --- | --- | --- |
-| Alta | O pacote declarativo ainda não tem assinatura nem mecanismo de atualização autenticada. | Uma distribuição pública não pode confiar em regras alteradas sem verificação criptográfica. |
-| Alta | A UI/scan usa contratos de segurança e revalidação, mas faltam VM, ACL negada, hard link e concorrência ampla. | Fixtures locais reduzem risco conhecido, mas não cobrem todos os mecanismos do Windows. |
+| Alta | O pacote declarativo só tem verificação local opcional de envelope; não há chave pública de produção nem mecanismo de atualização autenticada. | Uma distribuição pública ainda não pode confiar em regras remotas ou em rotação de chaves. |
+| Alta | A UI/scan usa contratos de segurança e revalidação, mas faltam VM, ACL negada e concorrência ampla; hard link físico agora tem guarda e fixture local. | Fixtures locais reduzem risco conhecido, mas não cobrem todos os mecanismos do Windows. |
 | Média | A grade de resultados agora usa `DataGridView.VirtualMode`, mas não há benchmark de 60 FPS/volumes grandes nem teste visual. | A virtualização reduz a criação de controles; memória, tempo de scan e responsividade ainda precisam de medição em volume real. |
 | Média | Preferências locais de movimento reduzido, idioma/tema e opt-in de atualização são persistidas em INI sanitizado; idioma/tema continuam fixos no protótipo. | Não há tradução adicional, troca visual de tema ou updater; o arquivo local não é prova de canal de atualização seguro. |
 | Média | Agendamento e mutação HKCU têm contratos fixos, mas execução real foi mantida fora dos testes automatizados. | O contrato é verificável; comportamento de conta/Task Scheduler/Registro precisa de validação manual. |

@@ -1,6 +1,6 @@
 # CLNXR — Catálogo inicial de regras
 
-Cada regra tem ID e versão. A fonte operacional está em `src/Clnxr.Platform.Windows/rules/windows.v1.json`, embutida no assembly e validada antes de ser exposta ao scanner. Caminhos são resolvidos apenas pelo adaptador Windows; a UI não recebe um campo para excluir um caminho arbitrário. O pacote é versionado, mas ainda não é assinado.
+Cada regra tem ID e versão. A fonte operacional está em `src/Clnxr.Platform.Windows/rules/windows.v1.json`, embutida no assembly e validada antes de ser exposta ao scanner. Caminhos são resolvidos apenas pelo adaptador Windows; a UI não recebe um campo para excluir um caminho arbitrário. O código também verifica localmente envelopes `clnxr.rules.signed.v1` com RSA/SHA-256 antes de materializar regras, mas o catálogo embutido continua sendo a única fonte usada pelo scanner até existir uma chave pública de produção e um canal autenticado.
 
 ## Regras personalizadas locais
 

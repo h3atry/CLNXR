@@ -49,6 +49,11 @@ namespace Clnxr.Platform.Windows
                 }
             }
 
+            return BuildTemplates(document);
+        }
+
+        internal static IList<WindowsRuleTemplate> BuildTemplates(WindowsRulePackDocument document)
+        {
             Validate(document);
             List<WindowsRuleTemplate> templates = new List<WindowsRuleTemplate>();
             foreach (WindowsRulePackEntry entry in document.rules)
@@ -71,7 +76,7 @@ namespace Clnxr.Platform.Windows
             return templates.AsReadOnly();
         }
 
-        private static void Validate(WindowsRulePackDocument document)
+        internal static void Validate(WindowsRulePackDocument document)
         {
             if (document == null) throw new InvalidOperationException("Pacote declarativo de regras Windows vazio.");
             if (!string.Equals(document.schemaVersion, SchemaVersion, StringComparison.Ordinal))

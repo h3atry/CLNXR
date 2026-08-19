@@ -174,7 +174,15 @@ namespace Clnxr.Platform.Windows
                         continue;
                     }
                     if ((attributes & FileAttributes.Directory) == FileAttributes.Directory) pending.Push(entry);
-                    else yield return entry;
+                    else
+                    {
+                        if (PathSafetyPolicy.HasMultipleHardLinks(entry))
+                        {
+                            issues.Add(PathRedactor.Redact("Hard link adicional preservado: " + entry));
+                            continue;
+                        }
+                        yield return entry;
+                    }
                 }
             }
         }

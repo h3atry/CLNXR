@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
+using System.Web.Script.Serialization;
 using Clnxr.Actions;
 using Clnxr.Application;
 using Clnxr.Core;
@@ -27,6 +30,7 @@ namespace Clnxr.Safety.Tests
                 TestLockedFileEvidence(fixtureRoot);
                 TestProfileCatalog();
                 TestDeclarativeRulePack();
+                TestSignedRulePackVerification();
                 TestCustomRulePreviewAndCleanup(fixtureRoot);
                 TestBrowserCacheRulesAndAge(fixtureRoot);
                 TestReadOnlyStorageTools(fixtureRoot);
@@ -37,7 +41,8 @@ namespace Clnxr.Safety.Tests
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 18 grupos de testes de seguranca, evidencia, catalogo declarativo, ferramentas locais, contratos P3, preferencias e remocao de dados proprios foram concluidos.");
+                TestHardLinkGuard(fixtureRoot);
+                Console.WriteLine("PASS: 20 grupos de testes de seguranca, evidencia, catalogo declarativo, pacote assinado, ferramentas locais, contratos P3, preferencias, remocao de dados proprios e hard links foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -230,6 +235,53 @@ namespace Clnxr.Safety.Tests
                 "Cada regra declarativa precisa ter versao e pelo menos um perfil.");
             Expect(rules.Any(rule => rule.RuleId == "windows-temp-v1" && rule.Risk == RiskLevel.Review),
                 "Pacote declarativo precisa preservar o risco de temporarios do Windows.");
+        }
+
+        private static void TestSignedRulePackVerification()
+        {
+            string payloadJson = "{\"schemaVersion\":\"clnxr.rules.windows.v1\",\"catalogVersion\":\"fixture-signed\",\"rules\":[{\"ruleId\":\"fixture-signed\",\"version\":\"1\",\"category\":\"Fixture\",\"explanation\":\"Regra assinada\",\"risk\":\"SAFE\",\"relativePath\":\"Cache\",\"filter\":\"\",\"profiles\":[\"Seguro\"],\"requiredClosedProcesses\":[],\"minimumAgeDays\":0,\"systemOnly\":false,\"pathBase\":\"LocalAppData\"}]}";
+            byte[] payload = Encoding.UTF8.GetBytes(payloadJson);
+            byte[] signature;
+            using (RSACryptoServiceProvider signer = new RSACryptoServiceProvider(2048))
+            using (SHA256Managed hash = new SHA256Managed())
+            {
+                signature = signer.SignData(payload, hash);
+                string envelope = new JavaScriptSerializer().Serialize(new
+                {
+                    schemaVersion = SignedRulePackService.EnvelopeSchemaVersion,
+                    keyId = "fixture-key",
+                    payload = Convert.ToBase64String(payload),
+                    signature = Convert.ToBase64String(signature)
+                });
+
+                SignedRulePackVerification verified = new SignedRulePackService().Verify(envelope, signer);
+                Expect(verified.Succeeded && verified.KeyId == "fixture-key" && verified.CatalogVersion == "fixture-signed" && verified.Rules.Count == 1,
+                    "Um pacote de regras assinado com chave correspondente precisa ser aceito e materializado.");
+
+                string tamperedPayloadJson = payloadJson.Replace("fixture-signed", "fixture-tampered");
+                string tamperedEnvelope = new JavaScriptSerializer().Serialize(new
+                {
+                    schemaVersion = SignedRulePackService.EnvelopeSchemaVersion,
+                    keyId = "fixture-key",
+                    payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(tamperedPayloadJson)),
+                    signature = Convert.ToBase64String(signature)
+                });
+                SignedRulePackVerification tampered = new SignedRulePackService().Verify(tamperedEnvelope, signer);
+                Expect(!tampered.Succeeded, "Alteração no payload precisa invalidar a verificação do pacote assinado.");
+            }
+
+            using (RSACryptoServiceProvider wrongKey = new RSACryptoServiceProvider(2048))
+            {
+                string wrongKeyEnvelope = new JavaScriptSerializer().Serialize(new
+                {
+                    schemaVersion = SignedRulePackService.EnvelopeSchemaVersion,
+                    keyId = "fixture-key",
+                    payload = Convert.ToBase64String(payload),
+                    signature = Convert.ToBase64String(signature)
+                });
+                SignedRulePackVerification rejected = new SignedRulePackService().Verify(wrongKeyEnvelope, wrongKey);
+                Expect(!rejected.Succeeded, "Uma chave pública diferente precisa rejeitar a assinatura do pacote.");
+            }
         }
 
         private static void TestCustomRulePreviewAndCleanup(string fixtureRoot)
@@ -588,6 +640,28 @@ namespace Clnxr.Safety.Tests
             Expect(File.Exists(externalFile), "A verificacao de symlink nao pode alterar o destino externo.");
         }
 
+        private static void TestHardLinkGuard(string fixtureRoot)
+        {
+            string root = Path.Combine(fixtureRoot, "hardlink-root");
+            string external = Path.Combine(fixtureRoot, "hardlink-external.bin");
+            string link = Path.Combine(root, "allowed-name.bin");
+            Directory.CreateDirectory(root);
+            File.WriteAllBytes(external, new byte[] { 1, 2, 3, 4 });
+            CreateHardLink(link, external);
+
+            Expect(File.Exists(link) && File.Exists(external), "A fixture de hard link precisa expor os dois nomes físicos.");
+            Expect(PathSafetyPolicy.HasMultipleHardLinks(link), "A política precisa detectar mais de um nome físico para o arquivo.");
+            SafetyDecision decision = new PathSafetyPolicy().ValidateExistingItem(link, root);
+            Expect(!decision.Allowed, "Um arquivo com hard link adicional precisa ser bloqueado antes da remoção.");
+
+            Finding finding = new Finding("fixture-hard-link", CreateRule("fixture-hard-link-v1", RiskLevel.Safe), "T:\\",
+                root, root, string.Empty, 4, 1, new[] { link });
+            CleanupReceipt receipt = new CleanupExecutor(new PathSafetyPolicy(), new FakeProcessInspector(false)).Execute(
+                ActionPlan.Create(CreateReviewedSession(finding), new[] { finding.FindingId }), CancellationToken.None, null);
+            Expect(receipt.Results.Single().Status == ActionStatus.Skipped, "Executor precisa registrar hard link como item preservado.");
+            Expect(File.Exists(link) && File.Exists(external), "A limpeza não pode remover nenhum dos nomes de um hard link.");
+        }
+
         private static void DeleteFixtureRoot(string fixtureRoot)
         {
             if (!Directory.Exists(fixtureRoot)) return;
@@ -642,6 +716,22 @@ namespace Clnxr.Safety.Tests
                 process.WaitForExit();
                 if (process.ExitCode != 0)
                     throw new InvalidOperationException("Nao foi possivel criar a fixture de symlink: " + process.StandardError.ReadToEnd());
+            }
+        }
+
+        private static void CreateHardLink(string link, string target)
+        {
+            ProcessStartInfo startInfo = new ProcessStartInfo();
+            startInfo.FileName = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe";
+            startInfo.Arguments = "/d /c mklink /H \"" + link + "\" \"" + target + "\"";
+            startInfo.CreateNoWindow = true;
+            startInfo.UseShellExecute = false;
+            startInfo.RedirectStandardError = true;
+            using (Process process = Process.Start(startInfo))
+            {
+                process.WaitForExit();
+                if (process.ExitCode != 0)
+                    throw new InvalidOperationException("Nao foi possivel criar a fixture de hard link: " + process.StandardError.ReadToEnd());
             }
         }
 
