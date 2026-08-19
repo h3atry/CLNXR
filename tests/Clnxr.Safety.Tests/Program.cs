@@ -27,12 +27,13 @@ namespace Clnxr.Safety.Tests
                 TestLockedFileEvidence(fixtureRoot);
                 TestProfileCatalog();
                 TestDeclarativeRulePack();
+                TestCustomRulePreviewAndCleanup(fixtureRoot);
                 TestBrowserCacheRulesAndAge(fixtureRoot);
                 TestReadOnlyStorageTools(fixtureRoot);
                 TestStorageAnalysisMidTreeCancellation(fixtureRoot);
                 TestJunctionGuard(fixtureRoot);
                 TestDirectorySymlinkGuard(fixtureRoot);
-                Console.WriteLine("PASS: 11 grupos de testes de seguranca, evidencia, catalogo declarativo e ferramentas somente leitura foram concluidos.");
+                Console.WriteLine("PASS: 12 grupos de testes de seguranca, evidencia, catalogo declarativo, regras personalizadas e ferramentas somente leitura foram concluidos.");
                 return 0;
             }
             catch (Exception ex)
@@ -67,6 +68,10 @@ namespace Clnxr.Safety.Tests
             Rule blockedRule = CreateRule("test-blocked", RiskLevel.Blocked);
             Expect(!policy.ValidateFinding(new Finding(null, blockedRule, "T:\\", cache, cache, null, 0, 0)).Allowed,
                 "Uma regra BLOCKED precisa ser bloqueada independentemente do caminho.");
+
+            string redacted = PathRedactor.Redact(Path.Combine("C:\\Users", Environment.UserName, "AppData", "Local", "Temp", "pytest-of-" + Environment.UserName));
+            Expect(redacted.IndexOf(Environment.UserName, StringComparison.OrdinalIgnoreCase) < 0,
+                "A redação de caminhos precisa remover o nome do usuário também quando ele aparece em um componente intermediário.");
         }
 
         private static void TestCleanupAndReceipt(string fixtureRoot)
@@ -221,6 +226,57 @@ namespace Clnxr.Safety.Tests
                 "Cada regra declarativa precisa ter versao e pelo menos um perfil.");
             Expect(rules.Any(rule => rule.RuleId == "windows-temp-v1" && rule.Risk == RiskLevel.Review),
                 "Pacote declarativo precisa preservar o risco de temporarios do Windows.");
+        }
+
+        private static void TestCustomRulePreviewAndCleanup(string fixtureRoot)
+        {
+            string root = Path.Combine(fixtureRoot, "custom-çache");
+            string excluded = Path.Combine(root, "excluded");
+            Directory.CreateDirectory(root);
+            Directory.CreateDirectory(excluded);
+            string oldFile = Path.Combine(root, "old-çache.tmp");
+            string unicodeFile = Path.Combine(root, "unicode-ação.tmp");
+            string recentFile = Path.Combine(root, "recent.tmp");
+            string excludedFile = Path.Combine(excluded, "excluded.tmp");
+            string keptLog = Path.Combine(root, "kept.log");
+            File.WriteAllBytes(oldFile, new byte[] { 1, 2, 3 });
+            File.WriteAllBytes(unicodeFile, new byte[] { 4, 5 });
+            File.WriteAllBytes(recentFile, new byte[] { 6 });
+            File.WriteAllBytes(excludedFile, new byte[] { 7 });
+            File.WriteAllBytes(keptLog, new byte[] { 8 });
+            File.SetLastWriteTimeUtc(oldFile, DateTime.UtcNow.AddDays(-10));
+            File.SetLastWriteTimeUtc(unicodeFile, DateTime.UtcNow.AddDays(-10));
+            File.SetLastWriteTimeUtc(recentFile, DateTime.UtcNow.AddDays(-1));
+
+            CustomRuleDraft draft = new CustomRuleDraft("Cache temporário de teste", root, 7, new[] { ".tmp" }, new[] { "excluded" }, "fixture-test");
+            CustomRuleService service = new CustomRuleService(new PathSafetyPolicy());
+            CustomRulePreview preview = service.Preview(draft, CancellationToken.None, null);
+            Expect(preview.CanSave && preview.Finding != null, "Regra personalizada precisa exigir e concluir uma prévia real antes de salvar.");
+            Expect(preview.Definition.SignatureStatus == "unsigned", "Regra personalizada sem pacote assinado precisa permanecer marcada como unsigned.");
+            Expect(preview.Finding.Rule.Risk == RiskLevel.Advanced, "Regra personalizada precisa nascer sempre como ADVANCED.");
+            Expect(preview.Finding.ExplicitItems.Count == 2 && preview.Finding.EstimatedBytes == 5, "Prévia personalizada precisa respeitar extensão e idade mínima.");
+            Expect(preview.Examples.All(path => path.IndexOf(Environment.UserName, StringComparison.OrdinalIgnoreCase) < 0), "Exemplos da prévia precisam ser redigidos antes de sair do motor.");
+
+            CleanupReceipt receipt = new CleanupExecutor(new PathSafetyPolicy(), new FakeProcessInspector(false)).Execute(
+                ActionPlan.Create(CreateReviewedSession(preview.Finding), new[] { preview.Finding.FindingId }), CancellationToken.None, null);
+            Expect(receipt.TotalBytesRemoved == 5, "Limpeza de regra personalizada precisa remover somente os arquivos enumerados na prévia.");
+            Expect(!File.Exists(oldFile) && !File.Exists(unicodeFile), "Arquivos antigos explicitamente incluídos precisam ser removidos.");
+            Expect(File.Exists(recentFile) && File.Exists(excludedFile) && File.Exists(keptLog), "Arquivo recente, exclusão e extensão não selecionada precisam permanecer.");
+
+            CustomRuleDraft unsafeDraft = new CustomRuleDraft("Perfil inteiro", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), 0, null, null, "fixture-test");
+            bool rejected = false;
+            try { service.ValidateAndCreate(unsafeDraft); }
+            catch (InvalidOperationException) { rejected = true; }
+            Expect(rejected, "Regra personalizada não pode usar a raiz inteira do perfil pessoal.");
+
+            string storePath = Path.Combine(fixtureRoot, "custom-rules", "custom-rules.v1.json");
+            CustomRuleStore store = new CustomRuleStore(storePath);
+            store.Save(preview.Definition);
+            IList<CustomRuleDefinition> stored = store.List();
+            Expect(stored.Count == 1 && stored[0].RuleId == preview.Definition.RuleId,
+                "Persistência local precisa recarregar a regra personalizada pelo esquema versionado.");
+            Expect(store.Delete(preview.Definition.RuleId) && store.List().Count == 0,
+                "Persistência local precisa permitir remover somente a regra personalizada escolhida.");
         }
 
         private static void TestBrowserCacheRulesAndAge(string fixtureRoot)

@@ -24,6 +24,7 @@
 - [ ] Limpeza oficial do Windows apenas por API/ferramenta oficial.
 - [x] Regras iniciais de Jogos (Unreal), Desenvolvedor (NuGet, npm, pnpm, Yarn, pip, uv, Gradle, Maven e Cargo) e caches de apps delimitados (Discord, Teams, Epic, Spotify e Electron), todas `REVIEW`/`ADVANCED` e desmarcadas por padrão.
 - [x] Catálogo Windows migrado para pacote declarativo versionado, embutido e validado antes do uso; IDs duplicados e schema inválido falham a carga.
+- [x] Regras personalizadas locais com prévia antes de salvar, escopo por pasta/idade/extensão/exclusão, risco `ADVANCED`, assinatura `unsigned`, persistência versionada e limpeza por itens explícitos revalidados.
 - [ ] Pacote de regras assinado e atualizado por canal autenticado.
 - [x] Motor somente leitura para mapa de disco, arquivos grandes e grupos duplicados, com cancelamento, limite de candidatos e exclusão de reparse points.
 - [x] Interface provisória compilada expõe Mapa de disco, Arquivos grandes e Duplicados como ações explícitas; duplicados exige confirmação antes do hash.

@@ -40,12 +40,14 @@ namespace Clnxr.Application
 
     public sealed class CleanerApplicationService
     {
+        private readonly PathSafetyPolicy safetyPolicy;
         private readonly WindowsCandidateScanner scanner;
         private readonly CleanupExecutor cleanupExecutor;
         private readonly ReceiptStore receiptStore;
         private readonly RecycleBinService recycleBinService;
         private readonly StorageSenseLauncher storageSenseLauncher;
         private readonly StorageAnalysisService storageAnalysisService;
+        private readonly CustomRuleStore customRuleStore;
 
         public CleanerApplicationService()
             : this(new PathSafetyPolicy(), new WindowsProcessInspector(), ReceiptStore.CreateDefault(), new RecycleBinService(), new StorageSenseLauncher(), new StorageAnalysisService())
@@ -60,6 +62,13 @@ namespace Clnxr.Application
 
         public CleanerApplicationService(PathSafetyPolicy safetyPolicy, IProcessInspector processInspector, ReceiptStore receiptStore,
             RecycleBinService recycleBinService, StorageSenseLauncher storageSenseLauncher, StorageAnalysisService storageAnalysisService)
+            : this(safetyPolicy, processInspector, receiptStore, recycleBinService, storageSenseLauncher, storageAnalysisService, CustomRuleStore.CreateDefault())
+        {
+        }
+
+        public CleanerApplicationService(PathSafetyPolicy safetyPolicy, IProcessInspector processInspector, ReceiptStore receiptStore,
+            RecycleBinService recycleBinService, StorageSenseLauncher storageSenseLauncher, StorageAnalysisService storageAnalysisService,
+            CustomRuleStore customRuleStore)
         {
             if (safetyPolicy == null) throw new ArgumentNullException("safetyPolicy");
             if (processInspector == null) throw new ArgumentNullException("processInspector");
@@ -67,13 +76,16 @@ namespace Clnxr.Application
             if (recycleBinService == null) throw new ArgumentNullException("recycleBinService");
             if (storageSenseLauncher == null) throw new ArgumentNullException("storageSenseLauncher");
             if (storageAnalysisService == null) throw new ArgumentNullException("storageAnalysisService");
+            if (customRuleStore == null) throw new ArgumentNullException("customRuleStore");
 
+            this.safetyPolicy = safetyPolicy;
             scanner = new WindowsCandidateScanner(safetyPolicy);
             cleanupExecutor = new CleanupExecutor(safetyPolicy, processInspector);
             this.receiptStore = receiptStore;
             this.recycleBinService = recycleBinService;
             this.storageSenseLauncher = storageSenseLauncher;
             this.storageAnalysisService = storageAnalysisService;
+            this.customRuleStore = customRuleStore;
         }
 
         public ScanSession Analyze(ScanProfile profile, CancellationToken cancellationToken, Action<string> progress)
@@ -84,6 +96,36 @@ namespace Clnxr.Application
         public ScanSession Analyze(ScanProfile profile, IEnumerable<string> selectedRuleIds, CancellationToken cancellationToken, Action<string> progress)
         {
             return scanner.Scan(new ScanOptions(profile, selectedRuleIds), cancellationToken, progress);
+        }
+
+        public ScanSession Analyze(ScanProfile profile, IEnumerable<string> selectedRuleIds, IEnumerable<CustomRuleDefinition> customRules,
+            CancellationToken cancellationToken, Action<string> progress)
+        {
+            return scanner.Scan(new ScanOptions(profile, selectedRuleIds, customRules), cancellationToken, progress);
+        }
+
+        public CustomRulePreview PreviewCustomRule(CustomRuleDraft draft, CancellationToken cancellationToken, Action<string> progress)
+        {
+            return new CustomRuleService(safetyPolicy).Preview(draft, cancellationToken, progress);
+        }
+
+        public CustomRuleDefinition SaveCustomRule(CustomRuleDraft draft, CancellationToken cancellationToken, Action<string> progress)
+        {
+            CustomRulePreview preview = PreviewCustomRule(draft, cancellationToken, progress);
+            if (!preview.CanSave || preview.Definition == null)
+                throw new InvalidOperationException("A regra personalizada só pode ser salva após uma prévia concluída sem avisos.");
+            customRuleStore.Save(preview.Definition);
+            return preview.Definition;
+        }
+
+        public IList<CustomRuleDefinition> ListCustomRules()
+        {
+            return customRuleStore.List();
+        }
+
+        public bool DeleteCustomRule(string ruleId)
+        {
+            return customRuleStore.Delete(ruleId);
         }
 
         public CleanupExecution Clean(ScanSession session, IEnumerable<string> selectedFindingIds, CancellationToken cancellationToken,

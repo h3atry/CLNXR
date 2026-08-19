@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Clnxr.Core
 {
@@ -66,9 +67,12 @@ namespace Clnxr.Core
                 int userStart = usersIndex + "\\Users\\".Length;
                 int nextSeparator = normalized.IndexOf(Path.DirectorySeparatorChar, userStart);
                 if (nextSeparator > userStart)
-                    return normalized.Substring(0, userStart) + "<user>" + normalized.Substring(nextSeparator);
+                    normalized = normalized.Substring(0, userStart) + "<user>" + normalized.Substring(nextSeparator);
             }
 
+            string userName = Environment.UserName;
+            if (!string.IsNullOrWhiteSpace(userName))
+                normalized = Regex.Replace(normalized, Regex.Escape(userName), "<user>", RegexOptions.IgnoreCase);
             return normalized;
         }
     }
@@ -115,6 +119,12 @@ namespace Clnxr.Core
     {
         public Finding(string findingId, Rule rule, string volume, string sourceRoot, string targetPath, string filter,
             long estimatedBytes, long fileCount)
+            : this(findingId, rule, volume, sourceRoot, targetPath, filter, estimatedBytes, fileCount, null)
+        {
+        }
+
+        public Finding(string findingId, Rule rule, string volume, string sourceRoot, string targetPath, string filter,
+            long estimatedBytes, long fileCount, IEnumerable<string> explicitItems)
         {
             if (rule == null) throw new ArgumentNullException("rule");
             FindingId = findingId ?? Guid.NewGuid().ToString("N");
@@ -125,6 +135,7 @@ namespace Clnxr.Core
             Filter = filter ?? string.Empty;
             EstimatedBytes = estimatedBytes;
             FileCount = fileCount;
+            ExplicitItems = new ReadOnlyCollection<string>((explicitItems ?? Enumerable.Empty<string>()).Where(item => !string.IsNullOrWhiteSpace(item)).ToList());
         }
 
         public string FindingId { get; private set; }
@@ -135,6 +146,7 @@ namespace Clnxr.Core
         public string Filter { get; private set; }
         public long EstimatedBytes { get; private set; }
         public long FileCount { get; private set; }
+        public ReadOnlyCollection<string> ExplicitItems { get; private set; }
         public bool DefaultSelected { get { return Rule.Risk == RiskLevel.Safe; } }
     }
 

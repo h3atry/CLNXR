@@ -107,7 +107,20 @@ namespace Clnxr.Actions
 
             try
             {
-                if (finding.Rule.ActionKind == RuleActionKind.DirectoryContents)
+                if (finding.ExplicitItems.Count > 0)
+                {
+                    foreach (string item in finding.ExplicitItems)
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            result.Status = ActionStatus.Cancelled;
+                            result.Messages.Add("Limpeza cancelada pelo usuario.");
+                            return result;
+                        }
+                        DeleteItem(item, decision.CanonicalPath, result, cancellationToken, finding.Rule.MinimumAgeDays);
+                    }
+                }
+                else if (finding.Rule.ActionKind == RuleActionKind.DirectoryContents)
                 {
                     foreach (string item in Directory.GetFileSystemEntries(decision.CanonicalPath))
                     {

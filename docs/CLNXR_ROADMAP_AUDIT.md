@@ -6,7 +6,7 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 
 | Requisito do roadmap | Estado | Evidência atual | Limite restante |
 | --- | --- | --- | --- |
-| Local-first, análise antes de limpar | Implementado | `Clnxr.Desktop`, `Clnxr.Platform.Windows`, testes e recibos locais. | Falta teste visual manual. |
+| Local-first, análise antes de limpar | Implementado | `Clnxr.Desktop`, `Clnxr.Platform.Windows`, testes e recibos locais; regras personalizadas também exigem prévia antes de persistir e limpar. | Falta teste visual manual. |
 | Não tocar navegador, login, cookies, Downloads, saves ou pessoal | Implementado no catálogo/política | `CLNXR_SAFETY_MODEL.md`, `PathSafetyPolicy.cs`, catálogo. | Requer auditoria externa antes de afirmar cobertura universal. |
 | Não seguir reparse point | Implementado e testado | `PathSafetyPolicy.cs`; fixtures de junction real, troca TOCTOU e symlink de diretório real em `Clnxr.Safety.Tests`. | Faltam combinações de hard link/ACL/concorrência de outros processos. |
 | Não matar processo nem elevar automaticamente | Implementado | `CleanupExecutor.cs`, inspetor de processos, UI de skips. | Faltam testes com processos reais de terceiros. |
@@ -22,19 +22,19 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | 2 — Shell/UI | Parcial forte | `src/Clnxr.Desktop` traz navegação, páginas, riscos, progressos, cancelamento e histórico; `Clnxr.Desktop.Smoke` constrói a janela sem exibi-la. | Teste visual, acessibilidade, DPI e movimento reduzido em runtime; decisão WPF/WinUI depois de SDK. |
 | 3 — Limpador seguro P0 | Parcial forte | Perfis Seguro/Completo/Jogos/Desenvolvedor/Personalizado, revalidação, filtro de idade para dumps/WER, caches GPU Intel/AMD/NVIDIA, caches de navegador restritos a subpastas conhecidas, bytes removidos, nova análise, fixtures e recibos redigidos. | Integração em VM para ACL, arquivos abertos e caches reais; Delivery Optimization/Windows Update ainda só abre a ferramenta oficial. |
 | 4 — Resultados e histórico | Parcial forte | Grid de resultados, riscos, regras, recibos listados localmente, verificação SHA-256, visualização estruturada em modo leitura e exportação explícita de JSON. | Filtros/virtualização e validação visual/manual do fluxo. |
-| 5 — Ferramentas P1 | Parcial funcional | Perfis Jogos/Desenvolvedor em `REVIEW`; stores NuGet/npm/pnpm/Yarn/pip/uv e caches Gradle/Maven/Cargo; caches Discord/Teams/Epic/Spotify e caminho Electron delimitado; Lixeira isolada pela API oficial; launcher confirmado para o Storage Sense oficial; mapa de disco, arquivos grandes e duplicados em modo somente leitura com cancelamento e defesa contra reparse point. | Teste visual, desempenho em volumes grandes, esvaziamento em VM e cobertura maior de launchers/dev tools. |
+| 5 — Ferramentas P1 | Parcial funcional | Perfis Jogos/Desenvolvedor em `REVIEW`; stores NuGet/npm/pnpm/Yarn/pip/uv e caches Gradle/Maven/Cargo; caches Discord/Teams/Epic/Spotify e caminho Electron delimitado; regras personalizadas locais com prévia e limpeza explícita; Lixeira isolada pela API oficial; launcher confirmado para o Storage Sense oficial; mapa de disco, arquivos grandes e duplicados em modo somente leitura com cancelamento e defesa contra reparse point. | Teste visual, desempenho em volumes grandes, esvaziamento em VM, importação/assinatura de regras e cobertura maior de launchers/dev tools. |
 | 6 — Beta público | Pré-release técnico, não beta | Pacote ZIP, checksum e SBOM de desenvolvimento publicados em `https://github.com/h3atry/CLNXR/releases`. | Assinatura, política/termos revisados, updater, VM limpa, auditoria e beta consentido. |
 | 7 — 1.0 | Não iniciado | Nenhuma evidência suficiente. | Todos os gates de beta, telemetria/relato opcional, suporte e auditoria externa. |
 | 8 — Futuro | Fora do P0/P1 | Nenhuma ação requerida agora. | Só priorizar após dados reais de beta. |
 
 ## Evidência de validação local disponível
 
-- `Clnxr.Safety.Tests`: onze grupos executados em sandbox temporário; inclui destino protegido, limpeza pelo serviço de aplicação, recibos com redação de caminho, cancelamento antes e durante análise P1, arquivo bloqueado, catálogo P0/P1, validação do pacote declarativo e perfil Personalizado, caches de navegador protegidos, filtro de idade, ferramentas P1 somente leitura, junction, TOCTOU e symlink de diretório.
+- `Clnxr.Safety.Tests`: doze grupos executados em sandbox temporário; inclui destino protegido, limpeza pelo serviço de aplicação, recibos com redação de caminho, cancelamento antes e durante análise P1, arquivo bloqueado, catálogo P0/P1, validação do pacote declarativo e perfil Personalizado, regras personalizadas com prévia/limpeza explícita e persistência local, caches de navegador protegidos, filtro de idade, ferramentas P1 somente leitura, junction, TOCTOU e symlink de diretório.
 - `Clnxr.WindowsScan.Smoke`: scan Seguro real em modo leitura e consulta global da Lixeira pela API do Windows, sem alteração de dados.
 - `Clnxr.Desktop.Smoke`: construção e descarte não visual da janela desktop em STA, sem análise ou limpeza.
 - `CLNXR.sln`: build Release dos doze projetos pelo MSBuild clássico e execução dos quatro binários de teste contra os assemblies físicos; o CLI também foi exercitado com dry-run e JSON.
-- `artifacts\CLNXR-Portable\`: bundle atual com executável gráfico, CLI, DLLs modulares e manifestos de hash; o ZIP portátil está em `artifacts\CLNXR-Portable-0.1.0-dev.zip`.
-- `artifacts\CLNXR-Portable-0.1.0-dev.zip`: pacote local validado quanto aos arquivos obrigatórios.
+- `artifacts\CLNXR-Portable\`: bundle histórico; a revisão validada atual é o ZIP `artifacts\CLNXR-Portable-0.1.0-dev.2.zip` com 16 entradas sob `CLNXR-Portable/`.
+- `artifacts\CLNXR-Portable-0.1.0-dev.2.zip`: pacote local validado quanto aos arquivos obrigatórios, hashes internos e dry-run do CLI extraído.
 
 ## Auditoria de artefatos — 18/08/2026
 
@@ -42,8 +42,8 @@ Data da auditoria: 18 de agosto de 2026. Esta tabela é uma verificação de est
 | --- | --- | --- |
 | Bundle portátil | Presente | Artefato local com DLLs modulares; não prova segurança ou prontidão pública. |
 | ZIP portátil | Presente | Pacote local gerado; não substitui instalação/teste em máquina limpa. |
-| SHA-256 do executável | `47CD4BEBC131FF4FA1CA325E22AB9DB639ADECC3D6A7BF5B7FAFC05AD0D97FE9` | Confere com `artifacts\SHA256SUMS.txt` e com o arquivo incorporado no ZIP desta rodada. |
-| SHA-256 do ZIP | `E28F701375D4B5BD99C4EBEBF9EE97B366034AA6DCD6C41965DA73569458AA40` | ZIP `v0.1.0-dev.1` final desta rodada; contém 16 entradas somente sob `CLNXR-Portable/` e foi inspecionado sem abrir a UI. |
+| SHA-256 do executável | `9D8BD5C0DBB533058BBA63F1D75D28D188E42C8B5B53C5FBDE022F2FAE3263DA` | Confere com o manifesto interno da revisão `v0.1.0-dev.2` e com o arquivo incorporado no ZIP. |
+| SHA-256 do ZIP | `D961D8027A5F815AB68345615D03814EA7A6A8204214284EA4ED7E73A8FCE2D5` | ZIP `v0.1.0-dev.2` desta rodada; contém 16 entradas somente sob `CLNXR-Portable/`, foi extraído, teve os hashes internos conferidos e o CLI concluiu dry-run redigido. |
 | SBOM | `SPDX-2.3` válido | Inventário de desenvolvimento, ainda sem revisão de distribuição. |
 | Assinatura Authenticode | `NotSigned` | Gate de beta público e 1.0 não atendido. |
 | SDK .NET detectado | Não | O ambiente atual não permite recompilação independente por SDK; a build existente não prova reprodutibilidade. |

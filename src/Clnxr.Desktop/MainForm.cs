@@ -123,6 +123,8 @@ namespace Clnxr.Desktop
         private readonly Button duplicatesButton;
         private readonly Button viewReceiptButton;
         private readonly Button exportReceiptButton;
+        private readonly Button customRuleButton;
+        private readonly Button deleteCustomRuleButton;
         private readonly DataGridView grid;
         private readonly Label pageTitle;
         private readonly Label pageDescription;
@@ -265,6 +267,15 @@ namespace Clnxr.Desktop
             exportReceiptButton.Enabled = false;
             exportReceiptButton.Click += delegate { ExportSelectedReceipt(); };
 
+            customRuleButton = CreateActionButton("Adicionar regra personalizada", Success, new Point(18, 40));
+            customRuleButton.Visible = false;
+            customRuleButton.Click += async delegate { await AddCustomRuleAsync(); };
+
+            deleteCustomRuleButton = CreateActionButton("Excluir personalizada", Review, new Point(230, 40));
+            deleteCustomRuleButton.Visible = false;
+            deleteCustomRuleButton.Enabled = false;
+            deleteCustomRuleButton.Click += delegate { DeleteSelectedCustomRule(); };
+
             Label protectedData = new Label();
             protectedData.Text = "Proteção fixa: navegadores, logins, cookies, Downloads, saves e arquivos pessoais ficam fora do catálogo.";
             protectedData.AutoSize = true;
@@ -284,6 +295,8 @@ namespace Clnxr.Desktop
             controls.Controls.Add(duplicatesButton);
             controls.Controls.Add(viewReceiptButton);
             controls.Controls.Add(exportReceiptButton);
+            controls.Controls.Add(customRuleButton);
+            controls.Controls.Add(deleteCustomRuleButton);
             controls.Controls.Add(protectedData);
 
             resultsFilterPanel = new Panel();
@@ -340,6 +353,11 @@ namespace Clnxr.Desktop
             grid.CellValueChanged += delegate(object sender, DataGridViewCellEventArgs args)
             {
                 if (args.RowIndex >= 0 && args.ColumnIndex == 0) BeginInvoke((MethodInvoker)delegate { ApplyFindingFilter(); });
+            };
+            grid.SelectionChanged += delegate
+            {
+                if (currentPage == DesktopPage.Rules && deleteCustomRuleButton != null)
+                    deleteCustomRuleButton.Enabled = IsCustomRuleSelected();
             };
 
             Panel footer = new Panel();
@@ -498,6 +516,7 @@ namespace Clnxr.Desktop
             currentPage = page;
             bool toolToolbar = page == DesktopPage.Tools;
             bool historyToolbar = page == DesktopPage.History;
+            bool rulesToolbar = page == DesktopPage.Rules;
             resultsFilterPanel.Visible = page == DesktopPage.Results;
             profileLabel.Visible = !toolToolbar && !historyToolbar;
             profileBox.Visible = !toolToolbar && !historyToolbar;
@@ -511,6 +530,9 @@ namespace Clnxr.Desktop
             duplicatesButton.Visible = toolToolbar;
             viewReceiptButton.Visible = historyToolbar;
             exportReceiptButton.Visible = historyToolbar;
+            customRuleButton.Visible = rulesToolbar;
+            deleteCustomRuleButton.Visible = rulesToolbar;
+            deleteCustomRuleButton.Enabled = rulesToolbar && IsCustomRuleSelected();
             foreach (KeyValuePair<DesktopPage, Button> pair in navigation)
             {
                 bool active = pair.Key == page;
@@ -746,7 +768,18 @@ namespace Clnxr.Desktop
                 new ColumnDefinition("RequiredProcesses", "Processos fechados", 190),
                 new ColumnDefinition("Explanation", "Explicação", 500)
             });
-            List<RuleRow> rows = application.ListRules().Select(rule => new RuleRow
+            IList<Rule> catalogRules;
+            try
+            {
+                catalogRules = GetSelectableRules();
+            }
+            catch (Exception ex)
+            {
+                catalogRules = new List<Rule>();
+                statusLabel.ForeColor = Color.FromArgb(235, 104, 104);
+                statusLabel.Text = "Falha ao ler regras personalizadas: " + ex.Message;
+            }
+            List<RuleRow> rows = catalogRules.Select(rule => new RuleRow
             {
                 RuleId = rule.RuleId,
                 Version = rule.Version,
@@ -757,8 +790,10 @@ namespace Clnxr.Desktop
                 Explanation = rule.Explanation
             }).ToList();
             grid.DataSource = new BindingList<RuleRow>(rows);
+            deleteCustomRuleButton.Enabled = rows.Count > 0 && IsCustomRuleSelected();
             summaryLabel.Text = rows.Count + " regra(s) catalogada(s). Regras REVIEW e ADVANCED não são selecionadas automaticamente.";
-            statusLabel.Text = "Alterações de regra exigem nova versão e testes.";
+            if (statusLabel.ForeColor != Color.FromArgb(235, 104, 104))
+                statusLabel.Text = "Regras personalizadas ficam locais, sem assinatura, e sempre exigem prévia no perfil Personalizado.";
         }
 
         private void ShowTools()
@@ -1114,11 +1149,16 @@ namespace Clnxr.Desktop
             choices.BorderStyle = BorderStyle.None;
             choices.CheckOnClick = true;
 
-            IList<Rule> rules = application.ListRules()
-                .Where(rule => rule.Risk != RiskLevel.Blocked)
-                .OrderBy(rule => rule.Category, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(rule => rule.RuleId, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            IList<Rule> rules;
+            try
+            {
+                rules = GetSelectableRules();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Não foi possível carregar o catálogo local de regras: " + ex.Message, "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
             foreach (Rule rule in rules)
             {
                 string label = string.Format("{0} — {1} [{2}]", rule.RuleId, rule.Category, RiskText(rule.Risk));
@@ -1164,14 +1204,292 @@ namespace Clnxr.Desktop
             return true;
         }
 
+        private IList<Rule> GetSelectableRules()
+        {
+            List<Rule> rules = application.ListRules()
+                .Where(rule => rule.Risk != RiskLevel.Blocked)
+                .ToList();
+            foreach (CustomRuleDefinition definition in application.ListCustomRules())
+                rules.Add(definition.ToRule());
+            return rules
+                .OrderBy(rule => rule.Category, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(rule => rule.RuleId, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private bool IsCustomRuleSelected()
+        {
+            RuleRow row = grid == null || grid.CurrentRow == null ? null : grid.CurrentRow.DataBoundItem as RuleRow;
+            return row != null && row.RuleId.StartsWith("custom-", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void DeleteSelectedCustomRule()
+        {
+            RuleRow row = grid.CurrentRow == null ? null : grid.CurrentRow.DataBoundItem as RuleRow;
+            if (row == null || !row.RuleId.StartsWith("custom-", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(this, "Selecione uma regra personalizada para excluir. Regras declarativas embutidas não podem ser removidas.", "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            if (MessageBox.Show(this, "Excluir somente a definição local " + row.RuleId + "? Nenhum arquivo será removido.",
+                "Excluir regra personalizada", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return;
+            try
+            {
+                if (application.DeleteCustomRule(row.RuleId))
+                {
+                    personalizedRuleIds.Remove(row.RuleId);
+                    ShowRules();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Não foi possível excluir a definição local: " + ex.Message, "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private IList<CustomRuleDefinition> GetSelectedCustomRules()
+        {
+            if (SelectedProfile != ScanProfile.Personalized) return new List<CustomRuleDefinition>();
+            return application.ListCustomRules()
+                .Where(rule => personalizedRuleIds.Contains(rule.RuleId))
+                .ToList();
+        }
+
+        private Task AddCustomRuleAsync()
+        {
+            using (Form dialog = new Form())
+            {
+                dialog.Text = "Adicionar regra personalizada";
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.MinimumSize = new Size(780, 520);
+                dialog.Size = new Size(900, 600);
+                dialog.BackColor = Graphite;
+                dialog.ForeColor = Color.White;
+                dialog.Font = Font;
+
+                Label heading = new Label();
+                heading.Text = "A regra será ADVANCED, local e sem assinatura. A prévia enumera os arquivos antes de salvar.";
+                heading.Dock = DockStyle.Top;
+                heading.Height = 44;
+                heading.Padding = new Padding(14, 12, 14, 0);
+                heading.ForeColor = TextMuted;
+
+                Panel fields = new Panel();
+                fields.Dock = DockStyle.Fill;
+                fields.Padding = new Padding(14, 8, 14, 8);
+
+                Label nameLabel = CreateFieldLabel("Nome da regra", 0, 8);
+                TextBox nameBox = CreateFieldTextBox(150, 4, 670, "Nome descritivo da regra");
+                nameBox.Text = "Cache personalizada";
+
+                Label rootLabel = CreateFieldLabel("Pasta raiz", 0, 52);
+                TextBox rootBox = CreateFieldTextBox(150, 48, 560, "Pasta absoluta a analisar");
+                Button browse = CreateActionButton("Escolher...", Cyan, new Point(720, 46));
+                browse.Click += delegate
+                {
+                    using (FolderBrowserDialog folder = new FolderBrowserDialog())
+                    {
+                        folder.Description = "Escolha uma pasta específica; a raiz do seu perfil pessoal é recusada.";
+                        folder.ShowNewFolderButton = false;
+                        if (folder.ShowDialog(dialog) == DialogResult.OK) rootBox.Text = folder.SelectedPath;
+                    }
+                };
+
+                Label ageLabel = CreateFieldLabel("Idade mínima", 0, 96);
+                NumericUpDown ageBox = new NumericUpDown();
+                ageBox.Minimum = 0;
+                ageBox.Maximum = 3650;
+                ageBox.Value = 7;
+                ageBox.Width = 120;
+                ageBox.Location = new Point(150, 92);
+
+                Label extensionLabel = CreateFieldLabel("Extensões", 0, 140);
+                TextBox extensionBox = CreateFieldTextBox(150, 136, 670, "tmp;log (vazio = todos os arquivos)");
+                extensionBox.Text = ".tmp";
+
+                Label exclusionLabel = CreateFieldLabel("Exclusões", 0, 184);
+                TextBox exclusionBox = CreateFieldTextBox(150, 180, 670, "Uma pasta relativa por linha; nunca use ..");
+                exclusionBox.Multiline = true;
+                exclusionBox.Height = 84;
+                exclusionBox.ScrollBars = ScrollBars.Vertical;
+
+                Label attributionLabel = CreateFieldLabel("Atribuição", 0, 280);
+                TextBox attributionBox = CreateFieldTextBox(150, 276, 670, "Opcional; origem da regra");
+
+                Label hint = new Label();
+                hint.Text = "Dados pessoais, navegadores, cookies, logins, Downloads e reparse points continuam protegidos.";
+                hint.AutoSize = false;
+                hint.Size = new Size(670, 42);
+                hint.Location = new Point(150, 320);
+                hint.ForeColor = TextMuted;
+
+                fields.Controls.Add(nameLabel);
+                fields.Controls.Add(nameBox);
+                fields.Controls.Add(rootLabel);
+                fields.Controls.Add(rootBox);
+                fields.Controls.Add(browse);
+                fields.Controls.Add(ageLabel);
+                fields.Controls.Add(ageBox);
+                fields.Controls.Add(extensionLabel);
+                fields.Controls.Add(extensionBox);
+                fields.Controls.Add(exclusionLabel);
+                fields.Controls.Add(exclusionBox);
+                fields.Controls.Add(attributionLabel);
+                fields.Controls.Add(attributionBox);
+                fields.Controls.Add(hint);
+
+                Label operationStatus = new Label();
+                operationStatus.Dock = DockStyle.Bottom;
+                operationStatus.Height = 32;
+                operationStatus.Padding = new Padding(14, 8, 14, 0);
+                operationStatus.ForeColor = Cyan;
+
+                Button cancel = CreateActionButton("Cancelar", Review, new Point(0, 0));
+                cancel.DialogResult = DialogResult.Cancel;
+                Button previewButton = CreateActionButton("Pré-visualizar e salvar", Success, new Point(0, 0));
+                FlowLayoutPanel buttons = new FlowLayoutPanel();
+                buttons.Dock = DockStyle.Bottom;
+                buttons.Height = 52;
+                buttons.FlowDirection = FlowDirection.RightToLeft;
+                buttons.Padding = new Padding(10, 8, 10, 8);
+                buttons.Controls.Add(cancel);
+                buttons.Controls.Add(previewButton);
+
+                bool saved = false;
+                previewButton.Click += async delegate
+                {
+                    if (string.IsNullOrWhiteSpace(rootBox.Text) || string.IsNullOrWhiteSpace(nameBox.Text))
+                    {
+                        MessageBox.Show(dialog, "Informe o nome e escolha uma pasta raiz antes da prévia.", "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    CustomRuleDraft draft = new CustomRuleDraft(
+                        nameBox.Text.Trim(),
+                        rootBox.Text.Trim(),
+                        (int)ageBox.Value,
+                        SplitRuleValues(extensionBox.Text, true),
+                        SplitRuleValues(exclusionBox.Text, false),
+                        attributionBox.Text.Trim());
+                    previewButton.Enabled = false;
+                    cancel.Enabled = false;
+                    operationStatus.ForeColor = Cyan;
+                    operationStatus.Text = "Enumerando somente para gerar a prévia...";
+                    try
+                    {
+                        CustomRulePreview preview = await Task.Run(delegate
+                        {
+                            return application.PreviewCustomRule(draft, CancellationToken.None, delegate(string message)
+                            {
+                                if (dialog.IsDisposed || !dialog.IsHandleCreated) return;
+                                dialog.BeginInvoke((Action)delegate { operationStatus.Text = message; });
+                            });
+                        });
+
+                        string issueText = preview.Issues.Count == 0 ? "Nenhum aviso." : string.Join(Environment.NewLine, preview.Issues.ToArray());
+                        string examples = preview.Examples.Count == 0 ? "(nenhum exemplo)" : string.Join(Environment.NewLine, preview.Examples.ToArray());
+                        string summary = string.Format("Regra: {0}{1}Risco: ADVANCED | Assinatura: unsigned{1}Arquivos na prévia: {2}{1}Bytes estimados: {3}{1}Exemplos redigidos:{1}{4}{1}{1}Avisos:{1}{5}",
+                            preview.Definition == null ? draft.Name : preview.Definition.RuleId,
+                            Environment.NewLine,
+                            preview.Finding == null ? 0 : preview.Finding.FileCount,
+                            preview.Finding == null ? SizeText(0) : SizeText(preview.Finding.EstimatedBytes),
+                            examples,
+                            issueText);
+                        MessageBox.Show(dialog, summary, "Prévia da regra personalizada", MessageBoxButtons.OK,
+                            preview.CanSave ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+                        if (!preview.CanSave)
+                        {
+                            operationStatus.ForeColor = Review;
+                            operationStatus.Text = "A regra não pode ser salva enquanto houver avisos ou nenhum arquivo elegível.";
+                            return;
+                        }
+
+                        if (MessageBox.Show(dialog, "Salvar esta regra localmente? Ela só será usada quando você escolher o perfil Personalizado.",
+                            "Confirmar regra personalizada", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                        {
+                            operationStatus.Text = "Regra não salva.";
+                            return;
+                        }
+
+                        CustomRuleDefinition definition = await Task.Run(delegate
+                        {
+                            return application.SaveCustomRule(draft, CancellationToken.None, null);
+                        });
+                        personalizedRuleIds.Add(definition.RuleId);
+                        saved = true;
+                        operationStatus.ForeColor = Success;
+                        operationStatus.Text = "Regra salva: " + definition.RuleId;
+                        dialog.DialogResult = DialogResult.OK;
+                        dialog.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        operationStatus.ForeColor = Color.FromArgb(235, 104, 104);
+                        operationStatus.Text = "Falha: " + ex.Message;
+                        MessageBox.Show(dialog, "Não foi possível criar a regra: " + ex.Message, "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    finally
+                    {
+                        previewButton.Enabled = true;
+                        cancel.Enabled = true;
+                    }
+                };
+
+                dialog.Controls.Add(fields);
+                dialog.Controls.Add(operationStatus);
+                dialog.Controls.Add(buttons);
+                dialog.Controls.Add(heading);
+                dialog.CancelButton = cancel;
+                dialog.ShowDialog(this);
+                if (saved) ShowRules();
+            }
+            return Task.FromResult<object>(null);
+        }
+
+        private Label CreateFieldLabel(string text, int x, int y)
+        {
+            Label label = new Label();
+            label.Text = text;
+            label.AutoSize = true;
+            label.ForeColor = TextMuted;
+            label.Location = new Point(x, y + 4);
+            return label;
+        }
+
+        private TextBox CreateFieldTextBox(int x, int y, int width, string accessibleName)
+        {
+            TextBox box = new TextBox();
+            box.Location = new Point(x, y);
+            box.Width = width;
+            box.AccessibleName = accessibleName;
+            return box;
+        }
+
+        private static IEnumerable<string> SplitRuleValues(string text, bool commaSeparated)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return new string[0];
+            char[] separators = commaSeparated ? new[] { ',', ';', '\r', '\n' } : new[] { ';', '\r', '\n' };
+            return text.Split(separators, StringSplitOptions.RemoveEmptyEntries).Select(value => value.Trim()).Where(value => value.Length > 0).ToArray();
+        }
+
         private async Task AnalyzeAsync()
         {
             if (activeOperation != null) return;
             IEnumerable<string> selectedRuleIds = null;
+            IList<CustomRuleDefinition> selectedCustomRules = new List<CustomRuleDefinition>();
             if (SelectedProfile == ScanProfile.Personalized)
             {
                 if (personalizedRuleIds.Count == 0 && !ConfigurePersonalizedRules()) return;
                 selectedRuleIds = personalizedRuleIds.ToArray();
+                try
+                {
+                    selectedCustomRules = GetSelectedCustomRules();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, "Não foi possível carregar as regras personalizadas salvas: " + ex.Message, "CLNXR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
             }
             Navigate(DesktopPage.Scan);
             activeOperation = new CancellationTokenSource();
@@ -1180,7 +1498,7 @@ namespace Clnxr.Desktop
             {
                 ScanSession session = await Task.Run(delegate
                 {
-                    return application.Analyze(SelectedProfile, selectedRuleIds, activeOperation.Token, ReportScanProgress);
+                    return application.Analyze(SelectedProfile, selectedRuleIds, selectedCustomRules, activeOperation.Token, ReportScanProgress);
                 });
 
                 currentSession = session;
@@ -1257,9 +1575,12 @@ namespace Clnxr.Desktop
                 IEnumerable<string> refreshedRuleIds = SelectedProfile == ScanProfile.Personalized
                     ? personalizedRuleIds.ToArray()
                     : null;
+                IList<CustomRuleDefinition> refreshedCustomRules = SelectedProfile == ScanProfile.Personalized
+                    ? GetSelectedCustomRules()
+                    : new List<CustomRuleDefinition>();
                 ScanSession refreshed = await Task.Run(delegate
                 {
-                    return application.Analyze(SelectedProfile, refreshedRuleIds, CancellationToken.None, ReportScanProgress);
+                    return application.Analyze(SelectedProfile, refreshedRuleIds, refreshedCustomRules, CancellationToken.None, ReportScanProgress);
                 });
                 currentSession = refreshed;
                 Navigate(DesktopPage.Results);
@@ -1414,6 +1735,8 @@ namespace Clnxr.Desktop
             diskMapButton.Enabled = !busy;
             largeFilesButton.Enabled = !busy;
             duplicatesButton.Enabled = !busy;
+            customRuleButton.Enabled = !busy;
+            deleteCustomRuleButton.Enabled = !busy && currentPage == DesktopPage.Rules && IsCustomRuleSelected();
             Cursor = busy ? Cursors.WaitCursor : Cursors.Default;
             if (!string.IsNullOrEmpty(message))
             {

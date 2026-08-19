@@ -20,18 +20,25 @@ public enum ScanProfile
     public sealed class ScanOptions
     {
         public ScanOptions(ScanProfile profile)
-            : this(profile, null)
+            : this(profile, null, null)
         {
         }
 
         public ScanOptions(ScanProfile profile, IEnumerable<string> selectedRuleIds)
+            : this(profile, selectedRuleIds, null)
+        {
+        }
+
+        public ScanOptions(ScanProfile profile, IEnumerable<string> selectedRuleIds, IEnumerable<CustomRuleDefinition> customRules)
         {
             Profile = profile;
             SelectedRuleIds = new List<string>(selectedRuleIds ?? Enumerable.Empty<string>()).AsReadOnly();
+            CustomRules = new List<CustomRuleDefinition>(customRules ?? Enumerable.Empty<CustomRuleDefinition>()).AsReadOnly();
         }
 
         public ScanProfile Profile { get; private set; }
         public IList<string> SelectedRuleIds { get; private set; }
+        public IList<CustomRuleDefinition> CustomRules { get; private set; }
         public string ProfileName
         {
             get
@@ -184,6 +191,32 @@ public enum ScanProfile
                     {
                         string target = Path.Combine(volumeRoot, rule.RelativePath);
                         AddIfEligible(session, rule, drive.Name, target, target, cancellationToken);
+                    }
+                }
+
+                if (options.CustomRules.Count > 0)
+                {
+                    if (options.Profile != ScanProfile.Personalized)
+                    {
+                        session.AddIssue("custom-rules", "Regras personalizadas só podem ser analisadas pelo perfil Personalizado.");
+                    }
+                    else
+                    {
+                        CustomRuleService customService = new CustomRuleService(safetyPolicy);
+                        foreach (CustomRuleDefinition customRule in options.CustomRules)
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                session.Cancel();
+                                return session;
+                            }
+                            CustomRulePreview preview = customService.Preview(
+                                new CustomRuleDraft(customRule.Name, customRule.RootPath, customRule.MinimumAgeDays,
+                                    customRule.Extensions, customRule.Exclusions, customRule.Attribution),
+                                cancellationToken, delegate(string message) { Report(progress, message); });
+                            foreach (string issue in preview.Issues) session.AddIssue(customRule.RuleId, issue);
+                            if (preview.CanSave && preview.Finding != null) session.AddFinding(preview.Finding);
+                        }
                     }
                 }
 

@@ -2,6 +2,12 @@
 
 Cada regra tem ID e versão. A fonte operacional está em `src/Clnxr.Platform.Windows/rules/windows.v1.json`, embutida no assembly e validada antes de ser exposta ao scanner. Caminhos são resolvidos apenas pelo adaptador Windows; a UI não recebe um campo para excluir um caminho arbitrário. O pacote é versionado, mas ainda não é assinado.
 
+## Regras personalizadas locais
+
+A página **Regras** permite criar uma regra com pasta raiz, idade mínima, extensões, exclusões relativas e atribuição. A prévia enumera os arquivos antes de salvar e mostra apenas exemplos redigidos. O catálogo local usa o esquema `clnxr.custom-rules.v1` em `%LocalAppData%\CLNXR\Rules\custom-rules.v1.json`.
+
+Essas regras são sempre `ADVANCED`, `unsigned` e ficam fora dos perfis padrão. Só são analisadas quando o usuário escolhe o perfil **Personalizado** e marca o ID. A raiz inteira do perfil pessoal, Downloads, dados protegidos, links/junctions/reparse points e escopos que falhem na prévia são recusados. A limpeza usa a lista explícita de arquivos da prévia e revalida cada item antes de remover. O arquivo local guarda a definição para o mesmo usuário, mas não é exportado nem compartilhado automaticamente pelo ZIP portátil.
+
 | ID | Perfil | Risco | Alvo | Guarda principal |
 | --- | --- | --- | --- | --- |
 | `profile-temp-v1` | Seguro/Completo | SAFE | `%LocalAppData%\Temp` de perfis elegíveis | raiz permitida, dados protegidos e reparse points bloqueados. |

@@ -20,6 +20,7 @@
 | Cancelamento P1 no meio da árvore | cria 128 arquivos de fixture, cancela no callback do 64º arquivo e verifica preservação dos extremos. | Não mede desempenho real em volume grande nem concorrência de processo externo. |
 | Ferramentas P1 somente leitura | mede uma fixture, encontra arquivo grande, agrupa conteúdo duplicado por SHA-256, ignora junction e preserva todos os arquivos. | Não substitui teste de desempenho em discos grandes ou dados reais. |
 | Pacote declarativo de regras | carrega o recurso `clnxr.rules.windows.v1`, verifica versão do catálogo, IDs únicos, perfis e riscos antes de expor regras ao scanner. | Não prova assinatura digital, atualização segura ou revisão externa do pacote. |
+| Regras personalizadas | cria uma regra com Unicode, idade mínima, extensão e exclusão; exige prévia real, mantém risco `ADVANCED`, redige exemplos, limpa somente itens explícitos e testa persistência versionada local (`save/list/delete`). | Não prova assinatura, importação/marketplace, portabilidade entre usuários ou segurança de uma raiz real escolhida fora da fixture. |
 | CLI smoke | executa `--help`, rejeita perfil Personalizado sem IDs e valida dry-run JSON sem alterar arquivos. | Não prova limpeza destrutiva, compatibilidade de shell ou distribuição pública. |
 
 ## Matriz obrigatória antes de beta

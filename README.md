@@ -4,7 +4,7 @@ Limpador de cache local para Windows, com análise antes de qualquer limpeza, se
 
 ## Estado desta entrega
 
-O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento local; o ZIP correspondente está em `artifacts\CLNXR-Portable-0.1.0-dev.zip`. Ele foi compilado e o núcleo passou pelos testes de sandbox incluídos no projeto. Não foi validado visualmente nesta máquina, em máquina virtual limpa, com assinatura de código ou por beta público; portanto, não deve ser apresentado como release público ou como prova de compatibilidade universal.
+O bundle gerado em `artifacts\CLNXR-Portable\` é uma prévia de desenvolvimento local; o ZIP correspondente desta revisão está em `artifacts\CLNXR-Portable-0.1.0-dev.2.zip`. Ele foi compilado e o núcleo passou pelos testes de sandbox incluídos no projeto. Não foi validado visualmente nesta máquina, em máquina virtual limpa, com assinatura de código ou por beta público; portanto, não deve ser apresentado como release público ou como prova de compatibilidade universal.
 
 O nome `CLNXR` é provisório. Marca, domínio, identificadores públicos e assinatura de código permanecem fora do escopo local até validação própria.
 
@@ -24,8 +24,10 @@ Repositório público e pré-release técnico: [github.com/h3atry/CLNXR](https:/
 - O bundle portátil contém o executável gráfico, o `CLNXR.Cli.exe` e as DLLs modulares `Clnxr.*`; ele usa o .NET Framework do Windows e não é uma distribuição self-contained validada para máquinas sem esse runtime.
 - Perfis P1 de Jogos (cache Unreal) e Desenvolvedor (NuGet, npm, pnpm, Yarn, pip, uv, Gradle, Maven e Cargo) existem como regras `REVIEW`/`ADVANCED`, desmarcadas por padrão. O perfil Completo inclui caches GPU Intel/AMD/NVIDIA, caches de navegador restritos a subpastas conhecidas e caches de apps fechados (Discord, Teams, Epic Launcher, Spotify e um caminho Electron genérico delimitado), sempre com proteção dos perfis e dados de sessão. A Lixeira é uma ferramenta separada que consulta primeiro e só chama a API oficial do Windows após confirmação. Para componentes do sistema, o CLNXR apenas abre o Storage Sense oficial após confirmação; ele não exclui componentes do Windows por conta própria.
 - O catálogo Windows é carregado de `src/Clnxr.Platform.Windows/rules/windows.v1.json`, embutido no assembly e validado por schema, versão, IDs únicos, perfis e riscos antes da análise. O pacote ainda não é assinado nem atualizado por canal autenticado.
+- Regras personalizadas podem ser criadas pela página Regras: o usuário escolhe uma pasta, idade mínima, extensões, exclusões e atribuição; o CLNXR mostra uma prévia redigida antes de salvar. Elas são persistidas localmente em `%LocalAppData%\\CLNXR\\Rules\\custom-rules.v1.json`, entram somente no perfil Personalizado, são sempre `ADVANCED` e permanecem `unsigned`; raízes protegidas, perfil pessoal inteiro, Downloads e reparse points são recusados.
 - Mapa de disco, Arquivos grandes e Duplicados são ferramentas P1 de inventário: executam apenas depois de ação explícita, são canceláveis, ignoram reparse points e não oferecem exclusão nesta versão. Arquivos grandes mostram no máximo 100 resultados a partir de 512 MB; duplicados usam SHA-256 em candidatos a partir de 64 MB e limitam o hash a 10.000 arquivos.
 - Não há atualizador, assinatura de código, SBOM de release assinado, instalador ou telemetria.
+- A persistência de regras personalizadas é local ao usuário e não acompanha automaticamente o ZIP portátil; importar/exportar regras e assinatura/marketplace continuam fora desta prévia.
 
 ## CLI local
 
